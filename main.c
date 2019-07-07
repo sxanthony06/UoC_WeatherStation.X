@@ -78,7 +78,7 @@ void main(void)
     //INTERRUPT_PeripheralInterruptDisable();
     
 
-    init_engine(EUSART1_Write);
+    init_engine(EUSART1_Write, EUSART1_Read);
     init_atcmd_parser(esp8266_default_atcmd_handler, 100, handlers_store);
     save_atcmd_handler("+CWMODE", 100, esp8266_default_atcmd_handler);
     execute_atcmd("ATE0");

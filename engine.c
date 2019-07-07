@@ -2,9 +2,11 @@
 
 /* Write pointer */
 static T_AT_UART_Write uart_write_byte;
+static T_AT_UART_Read uart_read_byte;
 
-void init_engine(T_AT_UART_Write fp_uart_write){
-    uart_write_byte = fp_uart_write;
+void init_engine(T_AT_UART_Write write_handler, T_AT_UART_Read read_handler){
+    uart_write_byte = write_handler;
+    uart_read_byte = read_handler;
 }
 
 static void send_text_via_uart(const char* str){
@@ -27,39 +29,30 @@ static void send_text_via_uart(const char* str){
 #endif
 }
 
+static void retrieve_uart_buffer_content(char *const buffer)
+{
+    uint8_t tmp, i;
+    for(i = 0; (tmp = uart_read_byte()) != 0; i++){
+        buffer[i] = tmp;
+    }
+}
+
 void execute_atcmd(const char *atcmd )
 {
     T_AT_handler atcmd_callback;
     uint16_t timeout;
-    uint8_t matched_atcmd_type, at_cmd_success, atcmd_rep_remaining, tmr0_rep_remaining;
-    uint8_t rx_storage[45];
+    uint8_t matched_atcmd_type, i;
+    uint8_t eusart_rx_buffer[45];
     
-    atcmd_rep_remaining = 3;
-    at_cmd_success = 0;
-    memset(rx_storage, 0, sizeof(rx_storage));
+    memset(eusart_rx_buffer, 0, sizeof(eusart_rx_buffer));
     
-    do {
-        parse_input_for_atcmd(atcmd, &atcmd_callback, &timeout, &matched_atcmd_type);
-        send_text_via_uart(atcmd);    
-
-        for(tmr0_rep_remaining = 0; tmr0_rep_remaining < (timeout/100); tmr0_rep_remaining++){
-            __delay_ms(100);
-        }
-
-        EUSART1_Flush_RxBuffer((char *const)rx_storage);
-   
-        tmr0_rep_remaining--;
-    }while(tmr0_rep_remaining > 0 && !strstr((const char*)rx_storage, "OK"));
-
-    /* TODO:
-        Implement code that puts microcontroller in low-power standby mode if
-        AT commands still fails after 3 intents.*/
+    parse_input_for_atcmd(atcmd, &atcmd_callback, &timeout, &matched_atcmd_type);
+    send_text_via_uart(atcmd);    
     
-    /* TODO:
-        Next statement makes code tightly coupled. If cmd_types_lut in at_parser.c
-        changes, following statement will probably give erroneous result. There needs
-        to be a way to use cmd_types_lut's own content to make comparison against 
-        matched_atcmd_type.*/
-    if(matched_atcmd_type > 1)
-        atcmd_callback((const char*)rx_storage, matched_atcmd_type);
+    for(i = 0; i < (timeout/100); i++){
+        __delay_ms(100);
+    }
+
+    retrieve_uart_buffer_content((char *const)eusart_rx_buffer);
+    atcmd_callback((const char*)eusart_rx_buffer, matched_atcmd_type);
 }
