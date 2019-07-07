@@ -13,16 +13,12 @@
             <sourceEncoding>ISO-8859-1</sourceEncoding>
             <make-dep-projects/>
             <sourceRootList>
-                <sourceRootElem>library</sourceRootElem>
                 <sourceRootElem>.</sourceRootElem>
+                <sourceRootElem>library</sourceRootElem>
             </sourceRootList>
             <confList>
                 <confElem>
-                    <name>default</name>
-                    <type>2</type>
-                </confElem>
-                <confElem>
-                    <name>PICKIT4</name>
+                    <name>PicKit4</name>
                     <type>2</type>
                 </confElem>
             </confList>

@@ -60,19 +60,31 @@ void __interrupt() INTERRUPT_InterruptManager (void)
     // interrupt handler
     if(INTCONbits.PEIE == 1)
     {
-        if(PIE1bits.TX1IE == 1 && PIR1bits.TX1IF == 1)
+        if(PIE3bits.TMR1GIE == 1 && PIR3bits.TMR1GIF == 1)
         {
-            EUSART1_TxDefaultInterruptHandler();
+        TMR1_GATE_ISR();
         } 
         else if(PIE1bits.RC1IE == 1 && PIR1bits.RC1IF == 1)
         {
-            EUSART1_RxDefaultInterruptHandler();
-        } 
+        EUSART1_RxDefaultInterruptHandler();
+    } 
+        else if(PIE1bits.TX1IE == 1 && PIR1bits.TX1IF == 1)
+        {
+        EUSART1_TxDefaultInterruptHandler();
+    } 
+        else if(PIE3bits.BCL2IE == 1 && PIR3bits.BCL2IF == 1)
+        {
+        I2C2_BusCollisionISR();
+    } 
+        else if(PIE3bits.SSP2IE == 1 && PIR3bits.SSP2IF == 1)
+        {
+        I2C2_ISR();
+    } 
         else
         {
-            //Unhandled Interrupt
-        }
-    }      
+        //Unhandled Interrupt
+    }    
+}
     else
     {
         //Unhandled Interrupt

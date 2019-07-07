@@ -53,13 +53,19 @@ void SYSTEM_Initialize(void)
     INTERRUPT_Initialize();
     PIN_MANAGER_Initialize();
     OSCILLATOR_Initialize();
+    I2C2_Initialize();
+    TMR1_Initialize();
+    ADC_Initialize();
+    /*Delay till garbage msg received from ESP8266 is fully received in order to
+    reset continuous receiver of EUSART1. */
+    __delay_ms(100);
     EUSART1_Initialize();
 }
 
 void OSCILLATOR_Initialize(void)
 {
-    // SCS INTOSC; IRCF 8MHz_HFINTOSC/2; IDLEN disabled; 
-    OSCCON = 0x62;
+    // SCS INTOSC; IRCF 16MHz_HFINTOSC; IDLEN disabled; 
+    OSCCON = 0x72;
     // PRISD enabled; SOSCGO disabled; MFIOSEL disabled; 
     OSCCON2 = 0x04;
     // INTSRC disabled; PLLEN disabled; TUN 0; 

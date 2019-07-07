@@ -32,13 +32,16 @@ typedef void ( *T_AT_UART_Write )(unsigned int data_out);
 typedef void ( *T_AT_UART_Write )(unsigned char data_out);
 #else
 typedef void ( *T_AT_UART_Write )(unsigned char data_out);
+typedef uint8_t ( *T_AT_UART_Read  )(void);
 #endif
 
 /*----------------------------------------------------------------------------*/
 
-void init_engine(T_AT_UART_Write fp_uart_write);
+void init_engine(T_AT_UART_Write write_handler, T_AT_UART_Read read_handler);
 
-static void send_text_via_uart(const char* str);
+static void send_text_via_uart(const char* data_out);
+
+static void retrieve_uart_buffer_content(char *const data_in);
 
 /**
  * @brief Simple AT Command
@@ -48,7 +51,7 @@ static void send_text_via_uart(const char* str);
  * Function should be used in case of simple AT commands which have no
  * additional arguments expected. Most of the AT Commands uses this function.
  */
-void execute_atcmd(const char *pCmd );
+void execute_atcmd(const char *pCmd);
 
 #ifdef __cplusplus  // Provide C++ Compatibility
     }

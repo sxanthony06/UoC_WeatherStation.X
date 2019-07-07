@@ -55,7 +55,7 @@
 */
 
 #define EUSART1_TX_BUFFER_SIZE 45
-#define EUSART1_RX_BUFFER_SIZE 45
+#define EUSART1_RX_BUFFER_SIZE 90
 
 /**
   Section: Global Variables
@@ -102,7 +102,7 @@ void EUSART1_Initialize(void)
     TXSTA1 = 0x24;
 
     // 
-    SPBRG1 = 0x10;
+    SPBRG1 = 0x22;
 
     // 
     SPBRGH1 = 0x00;
@@ -146,18 +146,12 @@ eusart1_status_t EUSART1_get_last_status(void){
     return eusart1RxLastError;
 }
 
-static void EUSART1_Clean_RxBuffer(void){
-    memset((unsigned char*)eusart1RxBuffer, '\0', EUSART1_RX_BUFFER_SIZE);
-    eusart1RxCount = 0;
-}
-
 uint8_t EUSART1_Read(void)
 {
     uint8_t readValue  = 0;
     
-    while(0 == eusart1RxCount)
-    {
-    }
+    if(eusart1RxCount == 0)
+        return -1;
 
     eusart1RxLastError = eusart1RxStatusBuffer[eusart1RxTail];
 
@@ -283,14 +277,14 @@ void EUSART1_SetRxInterruptHandler(void (* interruptHandler)(void)){
     EUSART1_RxDefaultInterruptHandler = interruptHandler;
 }
 
-void EUSART1_Flush_RxBuffer(char *const dest_array){
-    uint8_t counter = 0;
-    while(EUSART1_is_rx_ready()){
-        *(dest_array+counter) = EUSART1_Read();
-        counter++;
-    }
-    //EUSART1_Clean_RxBuffer();
-}
+//void EUSART1_Flush_RxBuffer(char *const dest_array){
+//    uint8_t counter = 0;
+//    while(EUSART1_is_rx_ready() != -1){
+//        *(dest_array+counter) = EUSART1_Read();
+//        counter++;
+//    }
+//    //EUSART1_Clean_RxBuffer();
+//}
 /**
   End of File
 */
