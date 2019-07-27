@@ -116,47 +116,47 @@
 #define T1G_SetAnalogMode()      do { ANSELBbits.ANSB5 = 1; } while(0)
 #define T1G_SetDigitalMode()     do { ANSELBbits.ANSB5 = 0; } while(0)
 
-// get/set WINDDIRECTION_INPUT aliases
-#define WINDDIRECTION_INPUT_TRIS                 TRISCbits.TRISC2
-#define WINDDIRECTION_INPUT_LAT                  LATCbits.LATC2
-#define WINDDIRECTION_INPUT_PORT                 PORTCbits.RC2
-#define WINDDIRECTION_INPUT_ANS                  ANSELCbits.ANSC2
-#define WINDDIRECTION_INPUT_SetHigh()            do { LATCbits.LATC2 = 1; } while(0)
-#define WINDDIRECTION_INPUT_SetLow()             do { LATCbits.LATC2 = 0; } while(0)
-#define WINDDIRECTION_INPUT_Toggle()             do { LATCbits.LATC2 = ~LATCbits.LATC2; } while(0)
-#define WINDDIRECTION_INPUT_GetValue()           PORTCbits.RC2
-#define WINDDIRECTION_INPUT_SetDigitalInput()    do { TRISCbits.TRISC2 = 1; } while(0)
-#define WINDDIRECTION_INPUT_SetDigitalOutput()   do { TRISCbits.TRISC2 = 0; } while(0)
-#define WINDDIRECTION_INPUT_SetAnalogMode()      do { ANSELCbits.ANSC2 = 1; } while(0)
-#define WINDDIRECTION_INPUT_SetDigitalMode()     do { ANSELCbits.ANSC2 = 0; } while(0)
+// get/set WIND_DIRECTION_INPUT aliases
+#define WIND_DIRECTION_INPUT_TRIS                 TRISCbits.TRISC2
+#define WIND_DIRECTION_INPUT_LAT                  LATCbits.LATC2
+#define WIND_DIRECTION_INPUT_PORT                 PORTCbits.RC2
+#define WIND_DIRECTION_INPUT_ANS                  ANSELCbits.ANSC2
+#define WIND_DIRECTION_INPUT_SetHigh()            do { LATCbits.LATC2 = 1; } while(0)
+#define WIND_DIRECTION_INPUT_SetLow()             do { LATCbits.LATC2 = 0; } while(0)
+#define WIND_DIRECTION_INPUT_Toggle()             do { LATCbits.LATC2 = ~LATCbits.LATC2; } while(0)
+#define WIND_DIRECTION_INPUT_GetValue()           PORTCbits.RC2
+#define WIND_DIRECTION_INPUT_SetDigitalInput()    do { TRISCbits.TRISC2 = 1; } while(0)
+#define WIND_DIRECTION_INPUT_SetDigitalOutput()   do { TRISCbits.TRISC2 = 0; } while(0)
+#define WIND_DIRECTION_INPUT_SetAnalogMode()      do { ANSELCbits.ANSC2 = 1; } while(0)
+#define WIND_DIRECTION_INPUT_SetDigitalMode()     do { ANSELCbits.ANSC2 = 0; } while(0)
 
-// get/set WINDSPEED_INPUT aliases
-#define WINDSPEED_INPUT_TRIS                 TRISCbits.TRISC3
-#define WINDSPEED_INPUT_LAT                  LATCbits.LATC3
-#define WINDSPEED_INPUT_PORT                 PORTCbits.RC3
-#define WINDSPEED_INPUT_ANS                  ANSELCbits.ANSC3
-#define WINDSPEED_INPUT_SetHigh()            do { LATCbits.LATC3 = 1; } while(0)
-#define WINDSPEED_INPUT_SetLow()             do { LATCbits.LATC3 = 0; } while(0)
-#define WINDSPEED_INPUT_Toggle()             do { LATCbits.LATC3 = ~LATCbits.LATC3; } while(0)
-#define WINDSPEED_INPUT_GetValue()           PORTCbits.RC3
-#define WINDSPEED_INPUT_SetDigitalInput()    do { TRISCbits.TRISC3 = 1; } while(0)
-#define WINDSPEED_INPUT_SetDigitalOutput()   do { TRISCbits.TRISC3 = 0; } while(0)
-#define WINDSPEED_INPUT_SetAnalogMode()      do { ANSELCbits.ANSC3 = 1; } while(0)
-#define WINDSPEED_INPUT_SetDigitalMode()     do { ANSELCbits.ANSC3 = 0; } while(0)
+// get/set WIND_SPEED_INPUT aliases
+#define WIND_SPEED_INPUT_TRIS                 TRISCbits.TRISC3
+#define WIND_SPEED_INPUT_LAT                  LATCbits.LATC3
+#define WIND_SPEED_INPUT_PORT                 PORTCbits.RC3
+#define WIND_SPEED_INPUT_ANS                  ANSELCbits.ANSC3
+#define WIND_SPEED_INPUT_SetHigh()            do { LATCbits.LATC3 = 1; } while(0)
+#define WIND_SPEED_INPUT_SetLow()             do { LATCbits.LATC3 = 0; } while(0)
+#define WIND_SPEED_INPUT_Toggle()             do { LATCbits.LATC3 = ~LATCbits.LATC3; } while(0)
+#define WIND_SPEED_INPUT_GetValue()           PORTCbits.RC3
+#define WIND_SPEED_INPUT_SetDigitalInput()    do { TRISCbits.TRISC3 = 1; } while(0)
+#define WIND_SPEED_INPUT_SetDigitalOutput()   do { TRISCbits.TRISC3 = 0; } while(0)
+#define WIND_SPEED_INPUT_SetAnalogMode()      do { ANSELCbits.ANSC3 = 1; } while(0)
+#define WIND_SPEED_INPUT_SetDigitalMode()     do { ANSELCbits.ANSC3 = 0; } while(0)
 
-// get/set ESP01_RST_PIN aliases
-#define ESP01_RST_PIN_TRIS                 TRISCbits.TRISC5
-#define ESP01_RST_PIN_LAT                  LATCbits.LATC5
-#define ESP01_RST_PIN_PORT                 PORTCbits.RC5
-#define ESP01_RST_PIN_ANS                  ANSELCbits.ANSC5
-#define ESP01_RST_PIN_SetHigh()            do { LATCbits.LATC5 = 1; } while(0)
-#define ESP01_RST_PIN_SetLow()             do { LATCbits.LATC5 = 0; } while(0)
-#define ESP01_RST_PIN_Toggle()             do { LATCbits.LATC5 = ~LATCbits.LATC5; } while(0)
-#define ESP01_RST_PIN_GetValue()           PORTCbits.RC5
-#define ESP01_RST_PIN_SetDigitalInput()    do { TRISCbits.TRISC5 = 1; } while(0)
-#define ESP01_RST_PIN_SetDigitalOutput()   do { TRISCbits.TRISC5 = 0; } while(0)
-#define ESP01_RST_PIN_SetAnalogMode()      do { ANSELCbits.ANSC5 = 1; } while(0)
-#define ESP01_RST_PIN_SetDigitalMode()     do { ANSELCbits.ANSC5 = 0; } while(0)
+// get/set ESP01_CHPD_PIN aliases
+#define ESP01_CHPD_PIN_TRIS                 TRISCbits.TRISC5
+#define ESP01_CHPD_PIN_LAT                  LATCbits.LATC5
+#define ESP01_CHPD_PIN_PORT                 PORTCbits.RC5
+#define ESP01_CHPD_PIN_ANS                  ANSELCbits.ANSC5
+#define ESP01_CHPD_PIN_SetHigh()            do { LATCbits.LATC5 = 1; } while(0)
+#define ESP01_CHPD_PIN_SetLow()             do { LATCbits.LATC5 = 0; } while(0)
+#define ESP01_CHPD_PIN_Toggle()             do { LATCbits.LATC5 = ~LATCbits.LATC5; } while(0)
+#define ESP01_CHPD_PIN_GetValue()           PORTCbits.RC5
+#define ESP01_CHPD_PIN_SetDigitalInput()    do { TRISCbits.TRISC5 = 1; } while(0)
+#define ESP01_CHPD_PIN_SetDigitalOutput()   do { TRISCbits.TRISC5 = 0; } while(0)
+#define ESP01_CHPD_PIN_SetAnalogMode()      do { ANSELCbits.ANSC5 = 1; } while(0)
+#define ESP01_CHPD_PIN_SetDigitalMode()     do { ANSELCbits.ANSC5 = 0; } while(0)
 
 // get/set RC6 procedures
 #define RC6_SetHigh()            do { LATCbits.LATC6 = 1; } while(0)

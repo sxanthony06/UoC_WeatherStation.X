@@ -243,6 +243,7 @@ void EUSART1_RxDataHandler(void){
     eusart1RxCount++;
 }
 
+//TODO Implement default function for handling FERR during UART reception
 void EUSART1_DefaultFramingErrorHandler(void){}
 
 void EUSART1_DefaultOverrunErrorHandler(void){
@@ -276,15 +277,6 @@ void EUSART1_SetTxInterruptHandler(void (* interruptHandler)(void)){
 void EUSART1_SetRxInterruptHandler(void (* interruptHandler)(void)){
     EUSART1_RxDefaultInterruptHandler = interruptHandler;
 }
-
-//void EUSART1_Flush_RxBuffer(char *const dest_array){
-//    uint8_t counter = 0;
-//    while(EUSART1_is_rx_ready() != -1){
-//        *(dest_array+counter) = EUSART1_Read();
-//        counter++;
-//    }
-//    //EUSART1_Clean_RxBuffer();
-//}
 /**
   End of File
 */

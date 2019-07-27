@@ -17,7 +17,7 @@
     Generation Information :
         Product Revision  :  PIC10 / PIC12 / PIC16 / PIC18 MCUs - 1.76
         Device            :  PIC18F45K22
-        Driver Version    :  2.03
+        Driver Version    :  2.12
     The generated drivers are tested against the following:
         Compiler          :  XC8 2.00 or later
         MPLAB 	          :  MPLAB X 5.10
@@ -51,44 +51,72 @@
 
 void  INTERRUPT_Initialize (void)
 {
-    // Disable Interrupt Priority Vectors (16CXXX Compatibility Mode)
-    RCONbits.IPEN = 0;
+    // Enable Interrupt Priority Vectors
+    RCONbits.IPEN = 1;
+
+    // Assign peripheral interrupt priority vectors
+
+    // RCI - high priority
+    IPR1bits.RC1IP = 1;
+
+    // TXI - high priority
+    IPR1bits.TX1IP = 1;
+
+
+    // TMRI - low priority
+    INTCON2bits.TMR0IP = 0;    
+
+    // TMRGI - low priority
+    IPR3bits.TMR1GIP = 0;    
+
+    // SSPI - low priority
+    IPR3bits.SSP2IP = 0;    
+
+    // BCLI - low priority
+    IPR3bits.BCL2IP = 0;    
+
 }
 
-void __interrupt() INTERRUPT_InterruptManager (void)
+void __interrupt() INTERRUPT_InterruptManagerHigh (void)
 {
     // interrupt handler
-    if(INTCONbits.PEIE == 1)
+    if(PIE1bits.RC1IE == 1 && PIR1bits.RC1IF == 1)
     {
-        if(PIE3bits.TMR1GIE == 1 && PIR3bits.TMR1GIF == 1)
-        {
-        TMR1_GATE_ISR();
-        } 
-        else if(PIE1bits.RC1IE == 1 && PIR1bits.RC1IF == 1)
-        {
         EUSART1_RxDefaultInterruptHandler();
     } 
         else if(PIE1bits.TX1IE == 1 && PIR1bits.TX1IF == 1)
         {
         EUSART1_TxDefaultInterruptHandler();
     } 
-        else if(PIE3bits.BCL2IE == 1 && PIR3bits.BCL2IF == 1)
+    else
+    {
+        //Unhandled Interrupt
+    }
+}
+
+void __interrupt(low_priority) INTERRUPT_InterruptManagerLow (void)
+{
+    // interrupt handler
+    if(INTCONbits.TMR0IE == 1 && INTCONbits.TMR0IF == 1)
+    {
+        TMR0_ISR();
+    }
+    else if(PIE3bits.TMR1GIE == 1 && PIR3bits.TMR1GIF == 1)
         {
-        I2C2_BusCollisionISR();
+        TMR1_GATE_ISR();
     } 
         else if(PIE3bits.SSP2IE == 1 && PIR3bits.SSP2IF == 1)
         {
         I2C2_ISR();
     } 
+    else if(PIE3bits.BCL2IE == 1 && PIR3bits.BCL2IF == 1)
+    {
+        I2C2_BusCollisionISR();
+    }
         else
         {
         //Unhandled Interrupt
     }    
-}
-    else
-    {
-        //Unhandled Interrupt
-    }
 }
 /**
  End of File

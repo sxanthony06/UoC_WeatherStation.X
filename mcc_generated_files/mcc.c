@@ -54,11 +54,9 @@ void SYSTEM_Initialize(void)
     PIN_MANAGER_Initialize();
     OSCILLATOR_Initialize();
     I2C2_Initialize();
-    TMR1_Initialize();
     ADC_Initialize();
-    /*Delay till garbage msg received from ESP8266 is fully received in order to
-    reset continuous receiver of EUSART1. */
-    __delay_ms(100);
+    TMR1_Initialize();
+    TMR0_Initialize();
     EUSART1_Initialize();
 }
 

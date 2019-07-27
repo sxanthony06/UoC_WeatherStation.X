@@ -56,6 +56,7 @@
 #include "tmr1.h"
 #include "memory.h"
 #include "adc.h"
+#include "tmr0.h"
 #include "eusart1.h"
 
 /**

@@ -94,8 +94,8 @@ typedef struct
 
 typedef enum
 {
-    WINDDIRECTION_INPUT =  0xE,
-    WINDSPEED_INPUT =  0xF,
+    WIND_DIRECTION_INPUT =  0xE,
+    WIND_SPEED_INPUT =  0xF,
     PRECIPITATION_INPUT =  0x16,
     channel_CTMU =  0x1D,
     channel_DAC =  0x1E,
