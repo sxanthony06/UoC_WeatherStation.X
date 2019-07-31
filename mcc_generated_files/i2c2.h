@@ -55,7 +55,7 @@
 #include <stddef.h>
 #include <xc.h>
 
-//#warning "This version of the I2C driver will be removed soon and the correct driver to use is the Foundation Services Library driver"
+#warning "This version of the I2C driver will be removed soon and the correct driver to use is the Foundation Services Library driver"
 
 #ifdef __cplusplus  // Provide C++ Compatibility
 

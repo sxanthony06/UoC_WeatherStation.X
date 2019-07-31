@@ -47,7 +47,11 @@
 */
 
 #include "interrupt_manager.h"
-#include "mcc.h"
+#include "i2c2.h"
+#include "tmr1.h"
+#include "adc.h"
+#include "tmr0.h"
+#include "eusart1.h"
 
 void  INTERRUPT_Initialize (void)
 {
