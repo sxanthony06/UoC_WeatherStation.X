@@ -50,34 +50,34 @@
 
 static T_AT_storage handlers_store[5];
 static enum at_cmd_results latest_atcmd_result;
-static enum conn_status ap_conn_status, server_conn_status;
+static enum conn_status wlan_conn_status, server_conn_status;
 
 struct common_net_info{
     uint8_t start_pos;
     uint8_t maxsize;
     uint8_t len;
     char value[EEPROM_STRING_MAX_LENGTH];
-}static ap_ssid, ap_passw, server_ip, server_port;
+}static wlan_ssid, wlan_passw, server_ip, server_port;
 
 static float current_temperature, current_humidity;
 
 static void default_ATCMD_response_parser(const char*, unsigned char );
-static void check_AP_connection_callback(const char*, unsigned char );
+static void check_WLAN_connection_callback(const char*, unsigned char );
 static void check_server_conn_callback(const char*, unsigned char);
-static uint8_t fetch_AP_data_eeprom(struct common_net_info*, struct common_net_info*);
+static uint8_t fetch_WLAN_data_eeprom(struct common_net_info*, struct common_net_info*);
 static uint8_t fetch_server_data_eeprom(struct common_net_info*, struct common_net_info*);
 static void clear_buffer(uint8_t, size_t,...);
 static void dht11_start_measuring(void);
 static void dht11_process_measurements(void);
-static uint8_t get_AP_info_from_remote_app(struct common_net_info*, struct common_net_info*);
-static uint8_t get_server_info_from_remote_app(struct common_net_info*, struct common_net_info*);
+static uint8_t acquire_WLAN_info(struct common_net_info*, struct common_net_info*);
+static uint8_t acquire_server_info(struct common_net_info*, struct common_net_info*);
 static uint8_t resolve_recv_net_info(struct common_net_info*, struct common_net_info*,
         struct common_net_info*, struct common_net_info*);
 static void boot_esp01_tcpserver(void);
-static void connect_to_ap(const char*, const char*);
+static void connect_to_WLAN(const char*, const char*);
 static void connect_to_server(const char*, const char*);
-static void write_AP_data_eeprom(struct common_net_info*, struct common_net_info*);
-static void write_server_data_eeprom(struct common_net_info*, struct common_net_info*);
+static void write_WLAN_data_to_EEPROM(struct common_net_info*, struct common_net_info*);
+static void write_server_data_to_EEPROM(struct common_net_info*, struct common_net_info*);
 
 
 /*
@@ -85,13 +85,13 @@ static void write_server_data_eeprom(struct common_net_info*, struct common_net_
  */
 void main(void)
 {
-    ap_ssid = (struct common_net_info){0, EEPROM_STRING_MAX_LENGTH, 0};
-    ap_passw = (struct common_net_info){ap_ssid.start_pos + ap_ssid.maxsize + 1, EEPROM_STRING_MAX_LENGTH, 0};
-    server_ip = (struct common_net_info){ap_passw.start_pos + ap_passw.maxsize + 1, EEPROM_STRING_MAX_LENGTH, 0};
+    wlan_ssid = (struct common_net_info){0, EEPROM_STRING_MAX_LENGTH, 0};
+    wlan_passw = (struct common_net_info){wlan_ssid.start_pos + wlan_ssid.maxsize + 1, EEPROM_STRING_MAX_LENGTH, 0};
+    server_ip = (struct common_net_info){wlan_passw.start_pos + wlan_passw.maxsize + 1, EEPROM_STRING_MAX_LENGTH, 0};
     server_port = (struct common_net_info){server_ip.start_pos + server_ip.maxsize + 1, EEPROM_SERVER_PORT_MAX_LENGTH, 0};
 
-    memset(ap_ssid.value, 0, ap_ssid.maxsize);
-    memset(ap_passw.value, 0, ap_passw.maxsize);
+    memset(wlan_ssid.value, 0, wlan_ssid.maxsize);
+    memset(wlan_passw.value, 0, wlan_passw.maxsize);
     memset(server_ip.value, 0, server_ip.maxsize);
     memset(server_port.value, 0, server_port.maxsize);
 
@@ -124,7 +124,7 @@ void main(void)
 
     ENGINE_initiate(EUSART1_Write, EUSART1_Read, EUSART1_is_rx_ready, SYSTEM_custom_delay_in_ms);
     init_atcmd_parser(default_ATCMD_response_parser, 100, handlers_store);
-    save_atcmd_handler("+CWJAP_CUR", AT_CMD_TYPE_SET, 5000, check_AP_connection_callback);
+    save_atcmd_handler("+CWJAP_CUR", AT_CMD_TYPE_SET, 5000, check_WLAN_connection_callback);
     save_atcmd_handler("+CIPSTART", AT_CMD_TYPE_SET, 2000, check_server_conn_callback); 
     
     execute_atcmd("ATE0");
@@ -132,9 +132,9 @@ void main(void)
     execute_atcmd("AT+CIPSNTPCFG=1,-4,\"0.pool.ntp.org\",\"1.pool.ntp.org\",\"3.pool.ntp.org\"");   // Configure device's location timezone and network time servers (to get time).
     execute_atcmd("AT+CWJAP_CUR?");
 
-    if(ap_conn_status == DISCONNECTED){
-        if(fetch_AP_data_eeprom(&ap_ssid, &ap_passw) & fetch_server_data_eeprom(&server_ip, &server_port)){
-            connect_to_ap(ap_ssid.value, ap_passw.value);
+    if(wlan_conn_status == DISCONNECTED){
+        if(fetch_WLAN_data_eeprom(&wlan_ssid, &wlan_passw) & fetch_server_data_eeprom(&server_ip, &server_port)){
+            connect_to_WLAN(wlan_ssid.value, wlan_passw.value);
 
             execute_atcmd("AT+CWAUTOCONN=1");   // Configure ESP8266 to use uploaded info to connect automatically to AP on power-up
             connect_to_server(server_ip.value, server_port.value);
@@ -142,19 +142,20 @@ void main(void)
             // If there are no AP and server info saved on EEPROM, put ESP01 in state to get info from ANDROID/IPHONE app (tcp client)
             uint8_t is_valid_ap_info = 0;
             uint8_t is_valid_server_info = 0;
-            uint8_t has_timer_run_out = 0;
+            volatile uint8_t has_timer_run_out = 0;
             while((ap_conn_status == DISCONNECTED || server_conn_status == DISCONNECTED) && !has_timer_run_out){
+            while((wlan_conn_status == DISCONNECTED || server_conn_status == DISCONNECTED) && !has_timer_run_out){
                 boot_esp01_tcpserver();              
                 do{
                     if(!is_valid_ap_info){
-                        if(get_AP_info_from_remote_app(&ap_ssid, &ap_passw) == 1){             // Retrieves AP info from first two strings sent through app
+                        if(acquire_WLAN_info(&wlan_ssid, &wlan_passw) == 1){             // Retrieves AP info from first two strings sent through app
                             is_valid_ap_info = 1;                                                                             
                         }else{
                         //TODO: Implement function to return message to tcp client with type of error in AP info
                         }
                     }
                     if(!is_valid_server_info){
-                        if(get_server_info_from_remote_app(&server_ip, &server_port) == 1){    // Retrieves server info from last two strings sent through app
+                        if(acquire_server_info(&server_ip, &server_port) == 1){    // Retrieves server info from last two strings sent through app
                             is_valid_server_info = 1;                                                     
                         }else{
                             //TODO: Implement function to return message to tcp client with type of error in server info
@@ -163,19 +164,19 @@ void main(void)
                 }while((!is_valid_ap_info || !is_valid_server_info) && !has_timer_run_out);
                 execute_atcmd("AT+CIPSERVER=0");
                 save_atcmd_timeout("+CWJAP_CUR", AT_CMD_TYPE_SET, 20000);
-                connect_to_ap(ap_ssid.value, ap_passw.value);   
+                connect_to_WLAN(wlan_ssid.value, wlan_passw.value);   
                 save_atcmd_timeout("+CWJAP_CUR", AT_CMD_TYPE_SET, 5000);
-                if(ap_conn_status == CONNECTED){
-                    write_AP_data_eeprom(&ap_ssid, &ap_passw);
+                if(wlan_conn_status == CONNECTED){
+                    write_WLAN_data_to_EEPROM(&wlan_ssid, &wlan_passw);
                 }else{
                     // TODO: Implement function to send back message to tcp client that AP info wasn't accepted
                     is_valid_ap_info = 0;
-                    memset(ap_ssid.value, 0, sizeof(ap_ssid.value));
-                    memset(ap_passw.value, 0, sizeof(ap_passw.value));
+                    memset(wlan_ssid.value, 0, sizeof(wlan_ssid.value));
+                    memset(wlan_passw.value, 0, sizeof(wlan_passw.value));
                 }
                 connect_to_server(server_ip.value, server_port.value);
                 if(server_conn_status == CONNECTED){
-                    write_server_data_eeprom(&server_ip, &server_port);
+                    write_server_data_to_EEPROM(&server_ip, &server_port);
                 }else{
                     // TODO: Implement function to send back message to tcp client that server info wasn't accepted
                     is_valid_server_info = 0;
@@ -210,7 +211,7 @@ static void default_ATCMD_response_parser(const char* atcmd_resp, unsigned char 
     latest_atcmd_result = (tmp != 0)? SUCCESS : ERROR;
 }
 
-static void check_AP_connection_callback(const char* atcmd_resp, unsigned char type){
+static void check_WLAN_connection_callback(const char* atcmd_resp, unsigned char type){
     // ONLY SET and QUERY types are defined for AT+CWJAP_CUR as of ESSPRESSIF ESP8266 AT instruction set v1.6.2
     char * x;
     char * y;
@@ -221,26 +222,26 @@ static void check_AP_connection_callback(const char* atcmd_resp, unsigned char t
         y = strstr(atcmd_resp, "ERROR");
         if(y != 0){
             latest_atcmd_result = FAILURE;
-            ap_conn_status = UNDEFINED;
+            wlan_conn_status = UNDEFINED;
         }else if(x != 0){
             latest_atcmd_result = SUCCESS;
-            ap_conn_status = DISCONNECTED;
+            wlan_conn_status = DISCONNECTED;
         }else {
             latest_atcmd_result = SUCCESS;
-            ap_conn_status = CONNECTED;
+            wlan_conn_status = CONNECTED;
         }
     }else if(type == AT_CMD_TYPE_SET){
         x = strstr(atcmd_resp, "FAIL");
         y = strstr(atcmd_resp, "ERROR");
         if(y != 0){
             latest_atcmd_result = FAILURE;
-            ap_conn_status = UNDEFINED;
+            wlan_conn_status = UNDEFINED;
         }else if(x != 0){
             latest_atcmd_result = SUCCESS;
-            ap_conn_status = DISCONNECTED;
+            wlan_conn_status = DISCONNECTED;
         }else {
             latest_atcmd_result = SUCCESS;
-            ap_conn_status = CONNECTED;
+            wlan_conn_status = CONNECTED;
         }        
     }
 }
@@ -258,7 +259,7 @@ static void check_server_conn_callback(const char* atcmd_resp, unsigned char typ
         }
 }
 
-static uint8_t fetch_AP_data_eeprom(struct common_net_info* ap_ssid, struct common_net_info* ap_passw){
+static uint8_t fetch_WLAN_data_eeprom(struct common_net_info* ap_ssid, struct common_net_info* ap_passw){
     uint8_t i;
 
     ap_ssid->len = DATAEE_ReadByte(ap_ssid->start_pos);
@@ -349,7 +350,7 @@ static void dht11_start_measuring(void){
     TMR1_StartSinglePulseAcquisition();
 }
 
-static uint8_t get_AP_info_from_remote_app(struct common_net_info* ssid, struct common_net_info* passw){
+static uint8_t acquire_WLAN_info(struct common_net_info* ssid, struct common_net_info* passw){
     if(get_ipd_data(ssid->value, ssid->maxsize) == 0)
         return 0;
     if(get_ipd_data(passw->value, passw->maxsize) == 0)
@@ -357,7 +358,7 @@ static uint8_t get_AP_info_from_remote_app(struct common_net_info* ssid, struct 
     return 1;
 }
 
-static uint8_t get_server_info_from_remote_app(struct common_net_info* ip, struct common_net_info* port){
+static uint8_t acquire_server_info(struct common_net_info* ip, struct common_net_info* port){
     // TODO: Implement more test to check if IPv4 notation is correct
     if(get_ipd_data(ip->value, ip->maxsize) == 0)
         return 0;
@@ -366,11 +367,11 @@ static uint8_t get_server_info_from_remote_app(struct common_net_info* ip, struc
     return 1;
 }
 
-static void connect_to_ap(const char* ssid, const char* passw){
+static void connect_to_WLAN(const char* ssid, const char* passw){
     char at_cmd_tmp_buf[45];
     memset(at_cmd_tmp_buf, 0, sizeof(at_cmd_tmp_buf));
     
-    if(ap_conn_status == CONNECTED){
+    if(wlan_conn_status == CONNECTED){
         execute_atcmd("AT+CWQAP");
         __delay_ms(3000);
     }
@@ -389,7 +390,7 @@ static void connect_to_server(const char* ip, const char* port){
 }
 
 static void boot_esp01_tcpserver(void){
-    if(ap_conn_status == CONNECTED){
+    if(wlan_conn_status == CONNECTED){
         execute_atcmd("AT+CWQAP");
         __delay_ms(3000);
     }
@@ -406,7 +407,7 @@ static void boot_esp01_tcpserver(void){
 
 }
 
-static void write_AP_data_eeprom(struct common_net_info* ssid, struct common_net_info* passw){
+static void write_WLAN_data_to_EEPROM(struct common_net_info* ssid, struct common_net_info* passw){
     uint8_t i;
     
     ssid->len = strlen(ssid->value);
@@ -421,7 +422,7 @@ static void write_AP_data_eeprom(struct common_net_info* ssid, struct common_net
     }    
 }
 
-static void write_server_data_eeprom(struct common_net_info* ip, struct common_net_info* port){
+static void write_server_data_to_EEPROM(struct common_net_info* ip, struct common_net_info* port){
     uint8_t i;
     
     ip->len = strlen(ip->value);
