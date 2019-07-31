@@ -85,6 +85,8 @@ void SYSTEM_Initialize(void);
  */
 void OSCILLATOR_Initialize(void);
 
+void SYSTEM_custom_delay_in_ms(uint32_t);
+
 #endif	/* MCC_H */
 /**
  End of File

@@ -12,13 +12,49 @@
 extern "C" {
 #endif
 
-#define EEPROM_MAX_STRING_LENGTH 16
-#define EEPROM_MAX_STRING_LENGTH 16
-#define EEPROM_SERVER_IP_LENGTH 4
-#define EEPROM_SERVER_PORT_LENGTH 5
+/**
+  Section: Macro constants declarations
+*/
+
+// EUSART1 declarations
+#define EUSART1_TX_BUFFER_SIZE 45
+#define EUSART1_RX_BUFFER_SIZE 90
+
+    
+// EEPROM declarations 
+#define EEPROM_STRING_MAX_LENGTH  16
+#define EEPROM_SERVER_PORT_MAX_LENGTH 5
 
 
+// TMR1 declarations    
+#define PULSE_WIDTH_MEASUREMENTS_SIZE 40
 
+/**
+  Section: Macro functions declarations
+*/
+
+#define testbit(var, bit) ((var) & (1 <<(bit)))
+#define setbit(var, bit) ((var) |= (1 << (bit)))
+#define clrbit(var, bit) ((var) &= ~(1 << (bit)))
+    
+#define LOW_BYTE(x)     ((unsigned char)((x)&0xFF))
+#define HIGH_BYTE(x)    ((unsigned char)(((x)>>8)&0xFF))    
+
+#define AT_CMD_TYPE_TEST    0
+#define AT_CMD_TYPE_QUERY   1
+#define AT_CMD_TYPE_SET     2
+#define AT_CMD_TYPE_EXECUTE 3
+
+#define AMOUNT_OF_CHAR_TO_IGNORE_IN_ATCMD 2
+    
+#define AT_CMD_MAX_LENGTH   45			    
+
+// AT COMMAND results
+enum at_cmd_results{SUCCESS, FAILURE, ERROR};
+
+// AP and server connection status
+enum conn_status{UNDEFINED, CONNECTED, DISCONNECTED};    
+    
 #ifdef	__cplusplus
 }
 #endif

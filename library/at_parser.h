@@ -51,9 +51,6 @@ extern "C"{
 #endif
 
 #include <stdint.h>
-#include <stddef.h>
-#include <string.h>
-#include <stdbool.h>
     
 /**
  * @name        Configuration defs
@@ -64,7 +61,6 @@ extern "C"{
 ///@{
 	
 /** Max command size excluding command args */
-#define _AT_CMD_MAXSIZE                             45			
  
 ///@}
 /**
@@ -81,7 +77,7 @@ typedef void (* T_AT_handler )(const char* buffer, uint8_t type );
  * @brief Parser Structure
  *
  * Struct is used for storing the command with timeout and callbacks.
- * Command strings are converted to the hash code for easiest comparision.
+ * Command strings are converted to the hash code for easiest comparison.
  */
 typedef struct
 {
@@ -90,7 +86,7 @@ typedef struct
     /** Command Hash Value */
     uint32_t                    hash;
     /** Command Timeout */
-    uint32_t                    timeout;
+    uint16_t                    at_cmd_type_timeouts[4];
     /** Get Callback */
     T_AT_handler                handler;
 
@@ -111,7 +107,7 @@ typedef struct
  * Hash code is used to save the command to the storage in aim to have fixed
  * storage space for all functions.
  */
-static uint32_t makeHash( char *pCmd );
+static uint32_t makeHash(const char *pCmd );
 
 /*
  * Search handler storage for provided command
@@ -119,7 +115,7 @@ static uint32_t makeHash( char *pCmd );
  * Function search the storage based on sting length and hash code.
  * If function returns zero command does not exists in storage area.
  */
-static uint8_t findHandler( char* pCmd );
+static uint8_t findHandler(const char* pCmd );
 
 /*
  * Search input for strings from LUT table.
@@ -153,7 +149,7 @@ static int searchLut( volatile unsigned char* pInput, char (*pLut)[ 3 ], int lut
  * execute this function later inside the application to reset AT Engine to
  * the default state.
  */
-void init_atcmd_parser(T_AT_handler pHandler, uint32_t cmdTimeout, T_AT_storage* pStorage);
+void init_atcmd_parser(T_AT_handler pHandler, uint16_t cmdTimeout, T_AT_storage* pStorage);
 
 /**
  * @brief Receive
@@ -195,13 +191,10 @@ void AT_tick();
  *
  * Saves handlers and timeout for the particular command.
  */
-uint8_t save_atcmd_handler( char *pCmd, uint32_t timeout, T_AT_handler pHandler );
+uint8_t save_atcmd_handler(char*, uint8_t, uint16_t, T_AT_handler);
 
-/**
- * @brief AT Engine State Machine
- *
- * This function should be placed inside the infinite while loop.
- */
+void save_atcmd_timeout(const char*, uint8_t, uint16_t);
+
 
 
 #ifdef __cplusplus
