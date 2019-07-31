@@ -183,7 +183,7 @@ void TMR1_GATE_ISR(void)
     PIR3bits.TMR1GIF = 0;
 }
 
-void TMR1_prep_new_measuremts(void){
+void TMR1_prepare_new_measurements(void){
     measurement_number = 0;
     memset((void*)pulse_width_measurements, 0, amount_measurements);
 }
