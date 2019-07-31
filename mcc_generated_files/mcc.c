@@ -70,6 +70,11 @@ void OSCILLATOR_Initialize(void)
     OSCTUNE = 0x00;
 }
 
+void SYSTEM_custom_delay_in_ms(uint32_t x){
+    while(x-- != 0)
+        __delay_us(990);
+}
+
 
 /**
  End of File

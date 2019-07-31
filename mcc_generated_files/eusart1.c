@@ -48,14 +48,7 @@
   Section: Included Files
 */
 #include "eusart1.h"
-#include "string.h"
-
-/**
-  Section: Macro Declarations
-*/
-
-#define EUSART1_TX_BUFFER_SIZE 45
-#define EUSART1_RX_BUFFER_SIZE 90
+#include "utilities.h"
 
 /**
   Section: Global Variables
@@ -150,8 +143,7 @@ uint8_t EUSART1_Read(void)
 {
     uint8_t readValue  = 0;
     
-    if(eusart1RxCount == 0)
-        return -1;
+    while(eusart1RxCount == 0);
 
     eusart1RxLastError = eusart1RxStatusBuffer[eusart1RxTail];
 
