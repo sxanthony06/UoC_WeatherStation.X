@@ -45,17 +45,7 @@
 */
 
 #include "mcc.h"
-#include "device_config.h"
-#include "pin_manager.h"
-#include <stdint.h>
-#include <stdbool.h>
-#include "interrupt_manager.h"
-#include "i2c2.h"
-#include "tmr1.h"
-#include "memory.h"
-#include "adc.h"
-#include "tmr0.h"
-#include "eusart1.h"
+
 
 
 void SYSTEM_Initialize(void)
@@ -64,10 +54,10 @@ void SYSTEM_Initialize(void)
     INTERRUPT_Initialize();
     PIN_MANAGER_Initialize();
     OSCILLATOR_Initialize();
-    I2C2_Initialize();
-    ADC_Initialize();
     TMR1_Initialize();
     TMR0_Initialize();
+    ADC_Initialize();
+    I2C2_Initialize();
     EUSART1_Initialize();
 }
 

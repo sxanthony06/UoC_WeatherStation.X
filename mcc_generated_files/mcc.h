@@ -47,12 +47,12 @@
 #ifndef MCC_H
 #define	MCC_H
 #include <xc.h>
+#include <stdint.h>
 #include "device_config.h"
 #include "pin_manager.h"
-#include <stdint.h>
 #include <stdbool.h>
 #include "interrupt_manager.h"
-#include "i2c2.h"
+#include "../i2c.h"
 #include "tmr1.h"
 #include "memory.h"
 #include "adc.h"
