@@ -55,6 +55,9 @@ static T_AT_storage handlers_store[5];
 static enum at_cmd_results latest_atcmd_result;
 static enum conn_status wlan_conn_status, server_conn_status;
 
+static volatile uint16_t count_tmr0_rollovers = 0;
+
+
 struct common_net_info{
     uint8_t start_pos;
     uint8_t maxsize;
@@ -82,6 +85,7 @@ static void connect_to_WLAN(const char*, const char*);
 static void connect_to_server(const char*, const char*);
 static void write_WLAN_data_to_EEPROM(struct common_net_info*, struct common_net_info*);
 static void write_server_data_to_EEPROM(struct common_net_info*, struct common_net_info*);
+static void increment_tmr0_rollover_count(void);
 
 
 /*
@@ -143,8 +147,16 @@ void main(void)
             execute_atcmd("AT+CWAUTOCONN=1");   // Configure ESP8266 to use uploaded info to connect automatically to AP on power-up
             connect_to_server(server_ip.value, server_port.value);
         }else{
+            count_tmr0_rollovers = 0;
+            TMR0_Reload();
+            TMR0_SetInterruptHandler(increment_tmr0_rollover_count);
+            TMR0_StartTimer();
             acquire_neccessary_info_for_server_connection_via_tcp_server();
-        }
+            TMR0_StopTimer();
+            if(wlan_conn_status != CONNECTED)
+                //TODO: Implement function to put PIC to sleep
+                NOP();
+            }
     }
     if(server_conn_status == DISCONNECTED){
         if(fetch_server_data_eeprom(&server_ip, &server_port)){
@@ -313,8 +325,8 @@ static void acquire_neccessary_info_for_server_connection_via_tcp_server(void){
 // If there are no AP and server info saved on EEPROM, put ESP01 in state to get info from ANDROID/IPHONE app (tcp client)
     uint8_t is_valid_ap_info = 0;
     uint8_t is_valid_server_info = 0;
-    volatile uint8_t has_timer_run_out = 0;
-    while((wlan_conn_status == DISCONNECTED || server_conn_status == DISCONNECTED) && !has_timer_run_out){
+    uint16_t max_rollovers = 600;
+    while((wlan_conn_status == DISCONNECTED || server_conn_status == DISCONNECTED) && count_tmr0_rollovers <= max_rollovers){
         boot_esp01_tcpserver();              
         do{
             if(!is_valid_ap_info || wlan_conn_status == DISCONNECTED){
@@ -331,7 +343,7 @@ static void acquire_neccessary_info_for_server_connection_via_tcp_server(void){
                     //TODO: Implement function to return message to tcp client with type of error in server info
                 }
             }
-        }while((!is_valid_ap_info || !is_valid_server_info) && !has_timer_run_out);
+        }while((!is_valid_ap_info || !is_valid_server_info) && count_tmr0_rollovers <= max_rollovers);
         execute_atcmd("AT+CIPSERVER=0");
         save_atcmd_timeout("+CWJAP_CUR", AT_CMD_TYPE_SET, 20000);
         connect_to_WLAN(wlan_ssid.value, wlan_passw.value);   
@@ -442,6 +454,18 @@ static void write_server_data_to_EEPROM(struct common_net_info* ip, struct commo
     for(i = 0; i < port->len; i++){
         DATAEE_WriteByte((i + 1 + port->start_pos), port->value[i]);
     } 
+}
+
+static void acquire_neccessary_WLAN_info_for_server_connection_via_smartconfig(){
+    TMR0_SetInterruptHandler(increment_tmr0_rollover_count);
+    execute_atcmd("AT+CWDHCP_CUR=1,1");
+    execute_atcmd("AT+CWSTARTSMART=1");    
+    __delay_ms(10000);
+    execute_atcmd("AT+CWSTOPSMART");
+}
+
+static void increment_tmr0_rollover_count(){
+    count_tmr0_rollovers--;
 }
 /*End of File
 */
