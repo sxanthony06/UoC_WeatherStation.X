@@ -11,9 +11,10 @@
             <header-extensions>h</header-extensions>
             <asminc-extensions/>
             <sourceEncoding>ISO-8859-1</sourceEncoding>
-            <make-dep-projects/>
+            <make-dep-projects>
+                <make-dep-project>BMP180_library.X</make-dep-project>
+            </make-dep-projects>
             <sourceRootList>
-                <sourceRootElem>library</sourceRootElem>
                 <sourceRootElem>.</sourceRootElem>
             </sourceRootList>
             <confList>

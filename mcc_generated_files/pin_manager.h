@@ -178,34 +178,6 @@
 #define RC7_SetAnalogMode()         do { ANSELCbits.ANSC7 = 1; } while(0)
 #define RC7_SetDigitalMode()        do { ANSELCbits.ANSC7 = 0; } while(0)
 
-// get/set SCL2 aliases
-#define SCL2_TRIS                 TRISDbits.TRISD0
-#define SCL2_LAT                  LATDbits.LATD0
-#define SCL2_PORT                 PORTDbits.RD0
-#define SCL2_ANS                  ANSELDbits.ANSD0
-#define SCL2_SetHigh()            do { LATDbits.LATD0 = 1; } while(0)
-#define SCL2_SetLow()             do { LATDbits.LATD0 = 0; } while(0)
-#define SCL2_Toggle()             do { LATDbits.LATD0 = ~LATDbits.LATD0; } while(0)
-#define SCL2_GetValue()           PORTDbits.RD0
-#define SCL2_SetDigitalInput()    do { TRISDbits.TRISD0 = 1; } while(0)
-#define SCL2_SetDigitalOutput()   do { TRISDbits.TRISD0 = 0; } while(0)
-#define SCL2_SetAnalogMode()      do { ANSELDbits.ANSD0 = 1; } while(0)
-#define SCL2_SetDigitalMode()     do { ANSELDbits.ANSD0 = 0; } while(0)
-
-// get/set SDA2 aliases
-#define SDA2_TRIS                 TRISDbits.TRISD1
-#define SDA2_LAT                  LATDbits.LATD1
-#define SDA2_PORT                 PORTDbits.RD1
-#define SDA2_ANS                  ANSELDbits.ANSD1
-#define SDA2_SetHigh()            do { LATDbits.LATD1 = 1; } while(0)
-#define SDA2_SetLow()             do { LATDbits.LATD1 = 0; } while(0)
-#define SDA2_Toggle()             do { LATDbits.LATD1 = ~LATDbits.LATD1; } while(0)
-#define SDA2_GetValue()           PORTDbits.RD1
-#define SDA2_SetDigitalInput()    do { TRISDbits.TRISD1 = 1; } while(0)
-#define SDA2_SetDigitalOutput()   do { TRISDbits.TRISD1 = 0; } while(0)
-#define SDA2_SetAnalogMode()      do { ANSELDbits.ANSD1 = 1; } while(0)
-#define SDA2_SetDigitalMode()     do { ANSELDbits.ANSD1 = 0; } while(0)
-
 // get/set PRECIPITATION_INPUT aliases
 #define PRECIPITATION_INPUT_TRIS                 TRISDbits.TRISD2
 #define PRECIPITATION_INPUT_LAT                  LATDbits.LATD2

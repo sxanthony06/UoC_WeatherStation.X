@@ -47,6 +47,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "utilities.h"
+#include <stdbool.h>
 
 static T_AT_storage handlers_store[5];
 static enum at_cmd_results latest_atcmd_result;
@@ -71,6 +72,7 @@ static void dht11_start_measuring(void);
 static void dht11_process_measurements(void);
 static uint8_t acquire_WLAN_info(struct common_net_info*, struct common_net_info*);
 static uint8_t acquire_server_info(struct common_net_info*, struct common_net_info*);
+static void acquire_neccessary_info_for_server_connection_via_tcp_server(void);
 static uint8_t resolve_recv_net_info(struct common_net_info*, struct common_net_info*,
         struct common_net_info*, struct common_net_info*);
 static void boot_esp01_tcpserver(void);
@@ -139,54 +141,9 @@ void main(void)
             execute_atcmd("AT+CWAUTOCONN=1");   // Configure ESP8266 to use uploaded info to connect automatically to AP on power-up
             connect_to_server(server_ip.value, server_port.value);
         }else{
-            // If there are no AP and server info saved on EEPROM, put ESP01 in state to get info from ANDROID/IPHONE app (tcp client)
-            uint8_t is_valid_ap_info = 0;
-            uint8_t is_valid_server_info = 0;
-            volatile uint8_t has_timer_run_out = 0;
-            while((ap_conn_status == DISCONNECTED || server_conn_status == DISCONNECTED) && !has_timer_run_out){
-            while((wlan_conn_status == DISCONNECTED || server_conn_status == DISCONNECTED) && !has_timer_run_out){
-                boot_esp01_tcpserver();              
-                do{
-                    if(!is_valid_ap_info){
-                        if(acquire_WLAN_info(&wlan_ssid, &wlan_passw) == 1){             // Retrieves AP info from first two strings sent through app
-                            is_valid_ap_info = 1;                                                                             
-                        }else{
-                        //TODO: Implement function to return message to tcp client with type of error in AP info
-                        }
-                    }
-                    if(!is_valid_server_info){
-                        if(acquire_server_info(&server_ip, &server_port) == 1){    // Retrieves server info from last two strings sent through app
-                            is_valid_server_info = 1;                                                     
-                        }else{
-                            //TODO: Implement function to return message to tcp client with type of error in server info
-                        }
-                    }
-                }while((!is_valid_ap_info || !is_valid_server_info) && !has_timer_run_out);
-                execute_atcmd("AT+CIPSERVER=0");
-                save_atcmd_timeout("+CWJAP_CUR", AT_CMD_TYPE_SET, 20000);
-                connect_to_WLAN(wlan_ssid.value, wlan_passw.value);   
-                save_atcmd_timeout("+CWJAP_CUR", AT_CMD_TYPE_SET, 5000);
-                if(wlan_conn_status == CONNECTED){
-                    write_WLAN_data_to_EEPROM(&wlan_ssid, &wlan_passw);
-                }else{
-                    // TODO: Implement function to send back message to tcp client that AP info wasn't accepted
-                    is_valid_ap_info = 0;
-                    memset(wlan_ssid.value, 0, sizeof(wlan_ssid.value));
-                    memset(wlan_passw.value, 0, sizeof(wlan_passw.value));
-                }
-                connect_to_server(server_ip.value, server_port.value);
-                if(server_conn_status == CONNECTED){
-                    write_server_data_to_EEPROM(&server_ip, &server_port);
-                }else{
-                    // TODO: Implement function to send back message to tcp client that server info wasn't accepted
-                    is_valid_server_info = 0;
-                    memset(server_ip.value, 0, sizeof(server_ip.value));
-                    memset(server_port.value, 0, sizeof(server_port.value));                
-                }   
-            }            
+            acquire_neccessary_info_for_server_connection_via_tcp_server();
         }
     }
-    
     if(server_conn_status == DISCONNECTED){
         if(fetch_server_data_eeprom(&server_ip, &server_port)){
             connect_to_server(server_ip.value, server_port.value);
@@ -348,6 +305,53 @@ static void dht11_start_measuring(void){
     __delay_us(40);
     TMR1_StartTimer();
     TMR1_StartSinglePulseAcquisition();
+}
+
+static void acquire_neccessary_info_for_server_connection_via_tcp_server(void){
+// If there are no AP and server info saved on EEPROM, put ESP01 in state to get info from ANDROID/IPHONE app (tcp client)
+    uint8_t is_valid_ap_info = 0;
+    uint8_t is_valid_server_info = 0;
+    volatile uint8_t has_timer_run_out = 0;
+    while((wlan_conn_status == DISCONNECTED || server_conn_status == DISCONNECTED) && !has_timer_run_out){
+        boot_esp01_tcpserver();              
+        do{
+            if(!is_valid_ap_info || wlan_conn_status == DISCONNECTED){
+                if(acquire_WLAN_info(&wlan_ssid, &wlan_passw) == 1){             // Retrieves AP info from first two strings sent through app
+                    is_valid_ap_info = 1;                                                                             
+                }else{
+                //TODO: Implement function to return message to tcp client with type of error in AP info
+                }
+            }
+            if(!is_valid_server_info || server_conn_status == DISCONNECTED){
+                if(acquire_server_info(&server_ip, &server_port) == 1){    // Retrieves server info from last two strings sent through app
+                    is_valid_server_info = 1;                                                     
+                }else{
+                    //TODO: Implement function to return message to tcp client with type of error in server info
+                }
+            }
+        }while((!is_valid_ap_info || !is_valid_server_info) && !has_timer_run_out);
+        execute_atcmd("AT+CIPSERVER=0");
+        save_atcmd_timeout("+CWJAP_CUR", AT_CMD_TYPE_SET, 20000);
+        connect_to_WLAN(wlan_ssid.value, wlan_passw.value);   
+        save_atcmd_timeout("+CWJAP_CUR", AT_CMD_TYPE_SET, 5000);
+        if(wlan_conn_status == CONNECTED){
+            write_WLAN_data_to_EEPROM(&wlan_ssid, &wlan_passw);
+        }else{
+            // TODO: Implement function to send back message to tcp client that AP info wasn't accepted
+            is_valid_ap_info = 0;
+            memset(wlan_ssid.value, 0, sizeof(wlan_ssid.value));
+            memset(wlan_passw.value, 0, sizeof(wlan_passw.value));
+        }
+        connect_to_server(server_ip.value, server_port.value);
+        if(server_conn_status == CONNECTED){
+            write_server_data_to_EEPROM(&server_ip, &server_port);
+        }else{
+            // TODO: Implement function to send back message to tcp client that server info wasn't accepted
+            is_valid_server_info = 0;
+            memset(server_ip.value, 0, sizeof(server_ip.value));
+            memset(server_port.value, 0, sizeof(server_port.value));                
+        }   
+    }    
 }
 
 static uint8_t acquire_WLAN_info(struct common_net_info* ssid, struct common_net_info* passw){

@@ -47,7 +47,7 @@
 */
 
 #include "interrupt_manager.h"
-#include "i2c2.h"
+#include "..\i2c.h"
 #include "tmr1.h"
 #include "adc.h"
 #include "tmr0.h"
@@ -72,9 +72,6 @@ void  INTERRUPT_Initialize (void)
 
     // TMRGI - low priority
     IPR3bits.TMR1GIP = 0;    
-
-    // SSPI - low priority
-    IPR3bits.SSP2IP = 0;    
 
     // BCLI - low priority
     IPR3bits.BCL2IP = 0;    
@@ -109,16 +106,12 @@ void __interrupt(low_priority) INTERRUPT_InterruptManagerLow (void)
         {
         TMR1_GATE_ISR();
     } 
-        else if(PIE3bits.SSP2IE == 1 && PIR3bits.SSP2IF == 1)
-        {
-        I2C2_ISR();
-    } 
     else if(PIE3bits.BCL2IE == 1 && PIR3bits.BCL2IF == 1)
     {
-        I2C2_BusCollisionISR();
+        I2C_bus_collision_ISR();
     }
-        else
-        {
+    else
+    {
         //Unhandled Interrupt
     }    
 }
