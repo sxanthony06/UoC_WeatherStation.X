@@ -76,6 +76,23 @@
       <compileType>
         <linkerTool>
           <linkerLibItems>
+            <linkerLibProjectItem>
+              <makeArtifact PL="BMP180_library.X"
+                            CT="3"
+                            CN="default"
+                            AC="true"
+                            BL="true"
+                            WD="BMP180_library.X"
+                            BC="${MAKE}  -f Makefile CONF=default"
+                            DBC="${MAKE}  -f Makefile CONF=default TYPE_IMAGE=DEBUG_RUN"
+                            CC="rm -rf &quot;build/default&quot; &quot;dist/default&quot;"
+                            OP="dist/default/production/BMP180_library.X.hex"
+                            DOP="dist/default/debug/BMP180_library.X.elf"
+                            FL="dist/default/production/BMP180_library.X.hex"
+                            PD="dist/default/production/BMP180_library.X.elf"
+                            DD="dist/default/debug/BMP180_library.X.elf">
+              </makeArtifact>
+            </linkerLibProjectItem>
           </linkerLibItems>
         </linkerTool>
         <archiverTool>
