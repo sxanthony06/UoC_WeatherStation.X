@@ -20,6 +20,7 @@
       <itemPath>library/at_parser.h</itemPath>
       <itemPath>engine.h</itemPath>
       <itemPath>library/utilities.h</itemPath>
+      <itemPath>BMP180_library.X/bmp180.h</itemPath>
     </logicalFolder>
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
@@ -46,6 +47,7 @@
       <itemPath>engine.c</itemPath>
       <itemPath>i2c.c</itemPath>
       <itemPath>i2c.h</itemPath>
+      <itemPath>BMP180_library.X/bmp180.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -76,23 +78,7 @@
       <compileType>
         <linkerTool>
           <linkerLibItems>
-            <linkerLibProjectItem>
-              <makeArtifact PL="BMP180_library.X"
-                            CT="3"
-                            CN="default"
-                            AC="true"
-                            BL="true"
-                            WD="BMP180_library.X"
-                            BC="${MAKE}  -f Makefile CONF=default"
-                            DBC="${MAKE}  -f Makefile CONF=default TYPE_IMAGE=DEBUG_RUN"
-                            CC="rm -rf &quot;build/default&quot; &quot;dist/default&quot;"
-                            OP="dist/default/production/BMP180_library.X.hex"
-                            DOP="dist/default/debug/BMP180_library.X.elf"
-                            FL="dist/default/production/BMP180_library.X.hex"
-                            PD="dist/default/production/BMP180_library.X.elf"
-                            DD="dist/default/debug/BMP180_library.X.elf">
-              </makeArtifact>
-            </linkerLibProjectItem>
+            <linkerLibFileItem>BMP180_library.X.lpp</linkerLibFileItem>
           </linkerLibItems>
         </linkerTool>
         <archiverTool>
@@ -121,7 +107,8 @@
         <property key="default-char-type" value="true"/>
         <property key="define-macros" value=""/>
         <property key="disable-optimizations" value="true"/>
-        <property key="extra-include-directories" value="library;mcc_generated_files"/>
+        <property key="extra-include-directories"
+                  value="mcc_generated_files;library;BMP180_library.X"/>
         <property key="favor-optimization-for" value="-speed,+space"/>
         <property key="garbage-collect-data" value="true"/>
         <property key="garbage-collect-functions" value="true"/>
