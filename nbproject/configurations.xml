@@ -47,7 +47,6 @@
       <itemPath>engine.c</itemPath>
       <itemPath>i2c.c</itemPath>
       <itemPath>i2c.h</itemPath>
-      <itemPath>BMP180_library.X/bmp180.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -108,7 +107,7 @@
         <property key="define-macros" value=""/>
         <property key="disable-optimizations" value="true"/>
         <property key="extra-include-directories"
-                  value="mcc_generated_files;library;BMP180_library.X"/>
+                  value="mcc_generated_files;.;library;BMP180_library.X"/>
         <property key="favor-optimization-for" value="-speed,+space"/>
         <property key="garbage-collect-data" value="true"/>
         <property key="garbage-collect-functions" value="true"/>

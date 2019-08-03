@@ -43,11 +43,13 @@
 
 #include "mcc_generated_files/mcc.h"
 #include "engine.h"
+#include "bmp180.h"
 #include "at_parser.h"
 #include <string.h>
 #include <stdio.h>
 #include "utilities.h"
 #include <stdbool.h>
+
 
 static T_AT_storage handlers_store[5];
 static enum at_cmd_results latest_atcmd_result;

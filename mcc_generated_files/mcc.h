@@ -52,8 +52,7 @@
 #include "pin_manager.h"
 #include <stdbool.h>
 #include "interrupt_manager.h"
-#include "../i2c.h"
-#include "../BMP180_library.X/bmp180.h"
+#include "i2c.h"
 #include "tmr1.h"
 #include "memory.h"
 #include "adc.h"
