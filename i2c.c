@@ -69,8 +69,8 @@ static void I2C_assert_condition(uint8_t);
 #define I2C2_MODE_SELECT_BITS                   SSP2CON1bits.SSPM     // I2C Master Mode control bit.
 #define I2C2_MASTER_ENABLE_CONTROL_BITS         SSP2CON1bits.SSPEN    // I2C port enable control bit.
 
-#define I2C_TRANSMISSION_IN_PROGRESS_BIT        SSP2STATbits.R_nW2    // Defines if module is transmitting in I2C MASTER MODE 
-#define I2C_BUFFER_FULL_BIT                     SSP2STATbits.BF2      // Defines status of SSP2BUF (full = 1, empty = 0)
+#define I2C_TRANSMISSION_IN_PROGRESS_BIT        SSP2STATbits.R_nW    // Defines if module is transmitting in I2C MASTER MODE 
+#define I2C_BUFFER_FULL_BIT                     SSP2STATbits.BF      // Defines status of SSP2BUF (full = 1, empty = 0)
 
 #define I2C_START_CONDITION_ENABLE_BIT         SSP2CON2bits.SEN      // I2C START control bit.
 #define I2C_REPEAT_START_CONDITION_ENABLE_BIT  SSP2CON2bits.RSEN     // I2C Repeated START control bit.
@@ -93,10 +93,10 @@ void I2C2_Initialize(void)
 
     // R_nW write_noTX; P stopbit_notdetected; S startbit_notdetected; BF RCinprocess_TXcomplete; SMP Standard Speed; UA dontupdate; CKE disabled; D_nA lastbyte_address; 
     SSP2STAT = 0x80;
-    // SSPEN disabled; WCOL no_collision; CKP Idle:Low, Active:High; SSPM FOSC/4_SSPxADD_I2C; SSPOV no_overflow; 
-    SSP2CON1 = 0x08;
+    // SSPEN enabled; WCOL no_collision; CKP Idle:Low, Active:High; SSPM FOSC/4_SSPxADD_I2C; SSPOV no_overflow; 
+    SSP2CON1 = 0x28;
     // SBCDE disabled; BOEN disabled; SCIE disabled; PCIE disabled; DHEN disabled; SDAHT 300ns; AHEN disabled; 
-    SSP2CON3 = 0x08;
+    SSP2CON3 = 0x00;
     // SSPADD 39; 
     SSP2ADD = 0x27;
     
@@ -110,16 +110,16 @@ void I2C2_Initialize(void)
     
 }
 
-int8_t I2C_write(uint8_t dev_id, uint8_t reg_addr, uint8_t reg_data, uint8_t len){
+int8_t I2C_write(uint8_t dev_id, uint8_t reg_addr, uint8_t *reg_data, uint8_t len){
     int8_t rslt = -1;
     
-    while((SSP2STAT & 0x1F) | I2C_TRANSMISSION_IN_PROGRESS_BIT);           // wait for I2C MASTER idle mode
+    while((SSP2CON2 & 0x1F) | I2C_TRANSMISSION_IN_PROGRESS_BIT);           // wait for I2C MASTER idle mode
     I2C_assert_condition(I2C_START);
     I2C_TRANSMIT_REG = (dev_id<<1);                    // make bit0 '1' to signal transmission to corresponding device, than load address into SSPBUG to start transmission
     if(!I2C_retrieve_ACK()){
         I2C_TRANSMIT_REG = reg_addr;
         if(!I2C_retrieve_ACK()){
-            I2C_TRANSMIT_REG = reg_data;
+            I2C_TRANSMIT_REG = *reg_data;
             if(!I2C_retrieve_ACK())
                 rslt = 0;                                    // calling function expects 0 for success and negative numbers for failure
         }
@@ -130,10 +130,12 @@ int8_t I2C_write(uint8_t dev_id, uint8_t reg_addr, uint8_t reg_data, uint8_t len
 
 int8_t I2C_read(uint8_t dev_id, uint8_t reg_addr, uint8_t *reg_data, uint8_t len){
     int8_t rslt = -1;
+    uint8_t dump_byte;
+    I2C_ACKNOWLEDGE_DATA_BIT = 0;
     
-    while((SSP2STAT & 0x1F) | I2C_TRANSMISSION_IN_PROGRESS_BIT);           // wait for I2C MASTER idle mode
+    while((SSP2CON2 & 0x1F) | I2C_TRANSMISSION_IN_PROGRESS_BIT);           // wait for I2C MASTER idle mode
     I2C_assert_condition(I2C_START);
-    I2C_TRANSMIT_REG = (dev_id<<1);
+    I2C_TRANSMIT_REG = dev_id<<1;
     if(!I2C_retrieve_ACK()){
         I2C_TRANSMIT_REG = reg_addr;
         if(!I2C_retrieve_ACK()){
@@ -142,17 +144,20 @@ int8_t I2C_read(uint8_t dev_id, uint8_t reg_addr, uint8_t *reg_data, uint8_t len
             if(!I2C_retrieve_ACK()){
                 for(uint8_t i = 0; i < len; i++){
                     I2C_RECEIVE_ENABLE_BIT = 1;
-                    while(PIR3bits.SSP2IF == 0 || I2C_BUFFER_FULL_BIT == 1)
+                    while(!(PIR3bits.SSP2IF == 1 && I2C_BUFFER_FULL_BIT == 1))
                         ;
-                        if(reg_data++ != 0){
-                            *reg_data = I2C_RECEIVE_REG;
-                            PIR3bits.SSP2IF = 0;
-                            I2C_ACKNOWLEDGE_DATA_BIT = 0;
-                            I2C_ACKNOWLEDGE_ENABLE_BIT = 1;
+                        PIR3bits.SSP2IF = 0;
+                        if(reg_data+i != 0){
+                            *(reg_data+i) = I2C_RECEIVE_REG;
+                        }else{
+                            dump_byte = I2C_RECEIVE_REG;
                         }
-                }
-                I2C_ACKNOWLEDGE_DATA_BIT = 1;
-                I2C_ACKNOWLEDGE_ENABLE_BIT = 1;
+                        if(i + 1 == len)
+                            I2C_ACKNOWLEDGE_DATA_BIT = 1;               // On reception of last byte, send NACK instead of ACK
+                        I2C_ACKNOWLEDGE_ENABLE_BIT = 1;                 // By default, send ACK
+                        while(I2C_ACKNOWLEDGE_ENABLE_BIT);
+                        PIR3bits.SSP2IF = 0;                                                 
+                }         
                 I2C_assert_condition(I2C_STOP);
                 rslt = 0;
             }
@@ -163,7 +168,8 @@ int8_t I2C_read(uint8_t dev_id, uint8_t reg_addr, uint8_t *reg_data, uint8_t len
 }
 
 static uint8_t I2C_retrieve_ACK(void){
-    while(I2C_BUFFER_FULL_BIT == 1 || PIR3bits.SSP2IF == 0);    // wait till byte has been sent and ACK or NACK received
+    //TODO: Add more checks to while clause e.g. buffer empty for receive 
+    while(PIR3bits.SSP2IF == 0);    // wait till byte has been sent and ACK or NACK received
     PIR3bits.SSP2IF = 0;
     return I2C_ACKNOWLEDGE_STATUS_BIT;
 }
@@ -175,28 +181,35 @@ static void I2C_assert_condition(uint8_t type_condition){
         case I2C_START:
             do{
                 I2C_START_CONDITION_ENABLE_BIT = 1;
-                while(PIR3bits.SSP2IF == 0 || PIR3bits.BCL2IF == 0);    // wait for START condition detection while checking for bus collision
+                while(PIR3bits.SSP2IF == 0 && PIR3bits.BCL2IF == 0);    // wait for START condition detection while checking for bus collision
                 if(PIR3bits.BCL2IF == 1){
                     PIR3bits.BCL2IF = 0;            
                     __delay_us(100);
                     continue;
                 }
-            }while(!(PIR3bits.SSP2IF == 1 || SSP2STATbits.S2));
+            }while(PIR3bits.SSP2IF == 0 && SSP2STATbits.S == 0);
             break;
         case I2C_REPEAT_START:
             do{
                 I2C_REPEAT_START_CONDITION_ENABLE_BIT = 1;
-                while(PIR3bits.SSP2IF == 0 || PIR3bits.BCL2IF == 0);    // wait for START condition detection while checking for bus collision
+                while(PIR3bits.SSP2IF == 0 && PIR3bits.BCL2IF == 0);    // wait for START condition detection while checking for bus collision
                 if(PIR3bits.BCL2IF == 1){
                     PIR3bits.BCL2IF = 0;            
                     __delay_us(100);
                     continue;
                 }
-            }while(!(PIR3bits.SSP2IF == 1 || SSP2STATbits.S2));
+            }while(PIR3bits.SSP2IF == 0 && SSP2STATbits.S == 0);
             break;
         case I2C_STOP:
-            I2C_STOP_CONDITION_ENABLE_BIT = 1;                          // commence I2C STOP condition sequence
-            while(!(PIR3bits.SSP2IF == 1 || SSP2STATbits.P2));          // wait for detection of STOP condition
+            do{
+                I2C_STOP_CONDITION_ENABLE_BIT = 1;                         // commence I2C STOP condition sequence
+                while(PIR3bits.SSP2IF == 0 && PIR3bits.BCL2IF == 0);    // wait for START condition detection while checking for bus collision
+                if(PIR3bits.BCL2IF == 1){
+                    PIR3bits.BCL2IF = 0;            
+                    __delay_us(150);
+                    continue;
+                }
+            }while(PIR3bits.SSP2IF == 0 && SSP2STATbits.P == 0);
             break;
     }
     PIR3bits.SSP2IF = 0;   
