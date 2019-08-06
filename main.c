@@ -54,9 +54,7 @@
 static T_AT_storage handlers_store[5];
 static enum at_cmd_results latest_atcmd_result;
 static enum conn_status wlan_conn_status, server_conn_status;
-
 static volatile uint16_t count_tmr0_rollovers = 0;
-
 
 struct common_net_info{
     uint8_t start_pos;
@@ -102,6 +100,12 @@ void main(void)
     memset(wlan_passw.value, 0, wlan_passw.maxsize);
     memset(server_ip.value, 0, server_ip.maxsize);
     memset(server_port.value, 0, server_port.maxsize);
+    
+    struct bmp180_dev dev;
+    dev.dev_id = BMP180_I2C_ADDR;
+    dev.delay_ms = SYSTEM_DELAY_IN_MS;
+    dev.read = I2C_read;
+    dev.write = I2C_write;
 
     // Configure and initialize the device. POWER_LED and ESP01_CHPD_pin are set HIGH during PIN_MANAGER_Initialize()
     SYSTEM_Initialize();
