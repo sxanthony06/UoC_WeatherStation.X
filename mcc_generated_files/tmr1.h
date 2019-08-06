@@ -366,7 +366,7 @@ uint8_t TMR1_CheckGateValueStatus(void);
 */
 bool TMR1_HasOverflowOccured(void);
 
-volatile const uint16_t* TMR1_list_pulsewidth_measurements(void);
+volatile const uint16_t* TMR1_retrieve_pulsewidth_measurements(void);
 
 /**
   @Summary

@@ -48,14 +48,16 @@ static void send_text_via_uart(const char* str){
 #endif
 }
 
-static void retrieve_uart_buffer_content(char *const buffer)
+static void retrieve_uart_unread_chars
+(char *const buffer)
 {
     uint8_t counter, count_unread_chars;
     
     count_unread_chars = get_count_unread_chars();
     for(counter = 0; counter < count_unread_chars; counter++){
         buffer[counter] = uart_receive();
-        if(!(count_unread_chars < EUSART1_RX_BUFFER_SIZE) && counter == EUSART1_RX_BUFFER_SIZE-1){
+        // In case there is more unread chars than space in parameter buffer, rollover to beginning of buffer
+        if((count_unread_chars > EUSART1_RX_BUFFER_SIZE) && counter == EUSART1_RX_BUFFER_SIZE-1){
             counter = 0;
             count_unread_chars = count_unread_chars - EUSART1_RX_BUFFER_SIZE;
         }
@@ -78,10 +80,11 @@ void execute_atcmd(const char *atcmd, ...)
     delay_in_ms(timeout);
     
     // Copy EUSART1 buffer content since the buffer may be manipulated during EUSART1 interrupts
-    retrieve_uart_buffer_content((char *const)eusart_rx_buffer);
+    retrieve_uart_unread_chars((char *const)eusart_rx_buffer);
     atcmd_callback((const char*)eusart_rx_buffer, matched_atcmd_type);
 }
 
+//TODO: Implement new version of this that looks for +IPD within whole UART buffer and not just portion with unread characters
 uint8_t get_ipd_data(char *const tmp_ipd_data_buf, uint8_t max_len){
     char tmp_char_count_buf[2];                                      // <len> of +IPD data is send as array of chars. Conversion is necessary, also a buf[2] implies a max string of 99 chars
     uint8_t recv_data_len;
@@ -93,7 +96,7 @@ uint8_t get_ipd_data(char *const tmp_ipd_data_buf, uint8_t max_len){
         while(get_count_unread_chars() == 0)
             delay_in_ms(50);        
         memset(eusart_rx_buffer, 0, strlen(eusart_rx_buffer));
-        retrieve_uart_buffer_content((char *const)eusart_rx_buffer);
+        retrieve_uart_unread_chars((char *const)eusart_rx_buffer);
     }while(!strstr((const char*)eusart_rx_buffer, "+IPD"));
                                     
     while(eusart_rx_buffer[++ipd_data_delimiter_pos] != ':' && ipd_data_delimiter_pos < EUSART1_RX_BUFFER_SIZE);       // IPD <data> is preceded by ':' symbol e.g. +IPD, 0, <len>: <data>. This ':' will function as delimiter to find length (<len>) of data and actual data 

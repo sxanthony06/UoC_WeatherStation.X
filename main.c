@@ -134,10 +134,13 @@ void main(void)
     //INTERRUPT_PeripheralInterruptDisable();
 
 
-    ENGINE_initiate(EUSART1_Write, EUSART1_Read, EUSART1_is_rx_ready, SYSTEM_custom_delay_in_ms);
+    ENGINE_initiate(EUSART1_Write, EUSART1_Read, EUSART1_is_rx_ready, SYSTEM_DELAY_IN_MS);
     init_atcmd_parser(default_ATCMD_response_parser, 100, handlers_store);
-    save_atcmd_handler("+CWJAP_CUR", AT_CMD_TYPE_SET, 5000, check_WLAN_connection_callback);
-    save_atcmd_handler("+CIPSTART", AT_CMD_TYPE_SET, 2000, check_server_conn_callback); 
+    TMR0_SetInterruptHandler(increment_tmr0_rollover_count);
+    bmp180_init(&dev);
+    
+    save_atcmd_handler("+CWJAP_CUR", AT_CMD_TYPE_SET, 7000, check_WLAN_connection_callback);
+    save_atcmd_handler("+CIPSTART", AT_CMD_TYPE_SET, 2000, check_server_conn_callback);     
     
     execute_atcmd("ATE0");
     execute_atcmd("AT+CWMODE_DEF=1");           // On power-up ESP01 sets into last configured Station/AP mode (even if not written to FLASH). This AT command defaults it to station mode, consuming less power.
@@ -153,7 +156,6 @@ void main(void)
         }else{
             count_tmr0_rollovers = 0;
             TMR0_Reload();
-            TMR0_SetInterruptHandler(increment_tmr0_rollover_count);
             TMR0_StartTimer();
             acquire_neccessary_info_for_server_connection_via_tcp_server();
             TMR0_StopTimer();
@@ -170,7 +172,7 @@ void main(void)
 
     __delay_ms(5000);
     dht11_process_measurements();
-
+    
     while (1)
     {
         __delay_ms(1000);
@@ -291,7 +293,7 @@ static void dht11_process_measurements(){
 
         dht11_start_measuring();
         __delay_ms(2000);
-        volatile const uint16_t* dht_measurements = TMR1_list_pulsewidth_measurements();
+        volatile const uint16_t* dht_measurements = TMR1_retrieve_pulsewidth_measurements();
         for(int b = 0; b < s; b++){
             for(int i = 0; i < 8; i++){
                 tmpdht11 = dht_measurements[tmp++];
@@ -316,6 +318,9 @@ static void dht11_process_measurements(){
 }
 
 static void dht11_start_measuring(void){
+    TMR1_Reload();
+    
+    // Start sequence of signals to receive DHT11 sensor readings of temperature and humidity
     T1G_SetDigitalOutput();
     PORTBbits.RB5 = 0;
     __delay_ms(20);
@@ -323,6 +328,9 @@ static void dht11_start_measuring(void){
     __delay_us(40);
     TMR1_StartTimer();
     TMR1_StartSinglePulseAcquisition();
+    __delay_ms(3);
+    TMR1_StopTimer();
+    
 }
 
 static void acquire_neccessary_info_for_server_connection_via_tcp_server(void){

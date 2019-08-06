@@ -56,8 +56,7 @@
 /**
   Section: Global Variable Definitions
 */
-volatile uint16_t timer1ReloadVal;
-volatile uint8_t amount_measurements;
+static volatile uint16_t timer1ReloadVal;
 static volatile uint16_t pulse_width_measurements[PULSE_WIDTH_MEASUREMENTS_SIZE];
 static volatile uint8_t measurement_number = 0;
 /**
@@ -164,7 +163,7 @@ bool TMR1_HasOverflowOccured(void)
     return(PIR1bits.TMR1IF);
 }
 
-volatile const uint16_t* TMR1_list_pulsewidth_measurements(void){
+volatile const uint16_t* TMR1_retrieve_pulsewidth_measurements(void){
     return pulse_width_measurements;
 }
 
@@ -172,7 +171,7 @@ void TMR1_GATE_ISR(void)
 {
     T1CONbits.TMR1ON = 0;
     // Skip first measurement as this is a pulse produced by DHT-11 that doesn't encode humidity measurement.
-    if(measurement_number > 0 && (measurement_number <= PULSE_WIDTH_MEASUREMENTS_SIZE))
+    if(measurement_number > 0 && (measurement_number < PULSE_WIDTH_MEASUREMENTS_SIZE))
         pulse_width_measurements[measurement_number-1] = TMR1_ReadTimer();
     TMR1_Reload();
     T1CONbits.TMR1ON = 1;
@@ -185,7 +184,7 @@ void TMR1_GATE_ISR(void)
 
 void TMR1_prepare_new_measurements(void){
     measurement_number = 0;
-    memset((void*)pulse_width_measurements, 0, amount_measurements);
+    memset((void*)pulse_width_measurements, 0, sizeof(pulse_width_measurements));
 }
 /**
  End of File
