@@ -49,3 +49,6 @@ build/
 *.su
 *.idb
 *.pdb
+bmp180\.p1
+
+bmp180\.pre
