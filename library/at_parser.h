@@ -149,7 +149,7 @@ static int searchLut( volatile unsigned char* pInput, char (*pLut)[ 3 ], int lut
  * execute this function later inside the application to reset AT Engine to
  * the default state.
  */
-void init_atcmd_parser(T_AT_handler pHandler, uint16_t cmdTimeout, T_AT_storage* pStorage);
+void parser_initiate(T_AT_handler pHandler, uint16_t cmdTimeout, T_AT_storage* pStorage);
 
 /**
  * @brief Receive

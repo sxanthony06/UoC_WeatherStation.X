@@ -12,7 +12,7 @@ static ENGINE_delayInMilliSecHandler delay_in_ms;
 
 static char eusart_rx_buffer[EUSART1_RX_BUFFER_SIZE];
 
-uint8_t ENGINE_initiate(ENGINE_uartWriteHandler tmp_write_handler, ENGINE_uartReadHandler tmp_read_handler, 
+uint8_t engine_initiate(ENGINE_uartWriteHandler tmp_write_handler, ENGINE_uartReadHandler tmp_read_handler, 
         ENGINE_countRxBufferHandler tmp_count_unread_chars_handler,
         ENGINE_delayInMilliSecHandler tmp_delay_in_ms){
     

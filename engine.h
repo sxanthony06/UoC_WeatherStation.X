@@ -38,7 +38,7 @@ typedef void    ( *ENGINE_delayInMilliSecHandler)(uint32_t);
 
 /*----------------------------------------------------------------------------*/
 
-uint8_t ENGINE_initiate(ENGINE_uartWriteHandler write_handler, ENGINE_uartReadHandler read_handler, 
+uint8_t engine_initiate(ENGINE_uartWriteHandler write_handler, ENGINE_uartReadHandler read_handler, 
         ENGINE_countRxBufferHandler count_unread_chard_handler,
         ENGINE_delayInMilliSecHandler delay_in_ms);
 

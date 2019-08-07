@@ -59,7 +59,7 @@ static uint8_t findHandler(const char* parsed_atcmd )
         Public Function Implementations
  ------------------------------------------------------------------------------*/
 
-void init_atcmd_parser(T_AT_handler pHandler, uint16_t cmdTimeout, T_AT_storage* pStorage){
+void parser_initiate(T_AT_handler pHandler, uint16_t cmdTimeout, T_AT_storage* pStorage){
     T_AT_storage cmd;
 
     cmd.handler = pHandler;

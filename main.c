@@ -51,38 +51,33 @@
 #include <stdbool.h>
 
 
-static T_AT_storage handlers_store[5];
 static enum at_cmd_results latest_atcmd_result;
 static enum conn_status wlan_conn_status, server_conn_status;
 static volatile uint16_t count_tmr0_rollovers = 0;
 
-struct common_net_info{
+typedef struct common_net_info{
     uint8_t start_pos;
     uint8_t maxsize;
     uint8_t len;
     char value[EEPROM_STRING_MAX_LENGTH];
-}static wlan_ssid, wlan_passw, server_ip, server_port;
-
-static float current_temperature, current_humidity;
+} cni;
 
 static void default_ATCMD_response_parser(const char*, unsigned char );
 static void check_WLAN_connection_callback(const char*, unsigned char );
 static void check_server_conn_callback(const char*, unsigned char);
-static uint8_t fetch_WLAN_data_eeprom(struct common_net_info*, struct common_net_info*);
-static uint8_t fetch_server_data_eeprom(struct common_net_info*, struct common_net_info*);
+static uint8_t fetch_WLAN_data_eeprom(cni*, cni*);
+static uint8_t fetch_server_data_eeprom(cni*, cni*);
 static void clear_buffer(uint8_t, size_t,...);
-static void dht11_start_measuring(void);
-static void dht11_process_measurements(void);
-static uint8_t acquire_WLAN_info(struct common_net_info*, struct common_net_info*);
-static uint8_t acquire_server_info(struct common_net_info*, struct common_net_info*);
-static void acquire_neccessary_info_for_server_connection_via_tcp_server(void);
-static uint8_t resolve_recv_net_info(struct common_net_info*, struct common_net_info*,
-        struct common_net_info*, struct common_net_info*);
+static void dht11_process_curent_sensor_readings(float* dht11_temperature, float* dht11_humidity, uint8_t attempts);
+static uint8_t acquire_WLAN_info(cni*, cni*);
+static uint8_t acquire_server_info(cni*, cni*);
+static void acquire_info_for_server_connection_via_tcp_server(cni*, cni*, cni*, cni*, uint16_t);
+static uint8_t resolve_recv_net_info(cni*, cni*, cni*, cni*);
 static void boot_esp01_tcpserver(void);
 static void connect_to_WLAN(const char*, const char*);
 static void connect_to_server(const char*, const char*);
-static void write_WLAN_data_to_EEPROM(struct common_net_info*, struct common_net_info*);
-static void write_server_data_to_EEPROM(struct common_net_info*, struct common_net_info*);
+static void write_WLAN_data_to_EEPROM(cni*, cni*);
+static void write_server_data_to_EEPROM(cni*, cni*);
 static void increment_tmr0_rollover_count(void);
 
 
@@ -91,10 +86,13 @@ static void increment_tmr0_rollover_count(void);
  */
 void main(void)
 {
-    wlan_ssid = (struct common_net_info){0, EEPROM_STRING_MAX_LENGTH, 0};
-    wlan_passw = (struct common_net_info){wlan_ssid.start_pos + wlan_ssid.maxsize + 1, EEPROM_STRING_MAX_LENGTH, 0};
-    server_ip = (struct common_net_info){wlan_passw.start_pos + wlan_passw.maxsize + 1, EEPROM_STRING_MAX_LENGTH, 0};
-    server_port = (struct common_net_info){server_ip.start_pos + server_ip.maxsize + 1, EEPROM_SERVER_PORT_MAX_LENGTH, 0};
+    T_AT_storage handlers_store[5];
+    float dht11_temperature, dht11_humidity;
+
+    cni wlan_ssid = {0, EEPROM_STRING_MAX_LENGTH, 0};
+    cni wlan_passw = {wlan_ssid.start_pos + wlan_ssid.maxsize + 1, EEPROM_STRING_MAX_LENGTH, 0};
+    cni server_ip = {wlan_passw.start_pos + wlan_passw.maxsize + 1, EEPROM_STRING_MAX_LENGTH, 0};
+    cni server_port = {server_ip.start_pos + server_ip.maxsize + 1, EEPROM_SERVER_PORT_MAX_LENGTH, 0};
 
     memset(wlan_ssid.value, 0, wlan_ssid.maxsize);
     memset(wlan_passw.value, 0, wlan_passw.maxsize);
@@ -134,8 +132,8 @@ void main(void)
     //INTERRUPT_PeripheralInterruptDisable();
 
 
-    ENGINE_initiate(EUSART1_Write, EUSART1_Read, EUSART1_is_rx_ready, SYSTEM_DELAY_IN_MS);
-    init_atcmd_parser(default_ATCMD_response_parser, 100, handlers_store);
+    engine_initiate(EUSART1_Write, EUSART1_Read, EUSART1_is_rx_ready, SYSTEM_DELAY_IN_MS);
+    parser_initiate(default_ATCMD_response_parser, 100, handlers_store);
     TMR0_SetInterruptHandler(increment_tmr0_rollover_count);
     bmp180_init(&dev);
     
@@ -154,10 +152,9 @@ void main(void)
             execute_atcmd("AT+CWAUTOCONN=1");   // Configure ESP8266 to use uploaded info to connect automatically to AP on power-up
             connect_to_server(server_ip.value, server_port.value);
         }else{
-            count_tmr0_rollovers = 0;
             TMR0_Reload();
             TMR0_StartTimer();
-            acquire_neccessary_info_for_server_connection_via_tcp_server();
+            acquire_info_for_server_connection_via_tcp_server(&wlan_ssid, &wlan_passw, &server_ip, &server_port, 600);
             TMR0_StopTimer();
             if(wlan_conn_status != CONNECTED)
                 //TODO: Implement function to put PIC to sleep
@@ -170,8 +167,7 @@ void main(void)
         }
     }
 
-    __delay_ms(5000);
-    dht11_process_measurements();
+    dht11_process_curent_sensor_readings(&dht11_humidity, &dht11_temperature, 2);
     
     while (1)
     {
@@ -224,19 +220,20 @@ static void check_WLAN_connection_callback(const char* atcmd_resp, unsigned char
 }
 
 static void check_server_conn_callback(const char* atcmd_resp, unsigned char type){
-        char  *x, *y;
-        x = strstr(atcmd_resp, "CONNECT");      // Function strstr searches for 'CONNECT' in atcmd_resp, so x will be unline NULL also for 'ALREADY CONNECTED'. See strstr() in string.h for more info
-        y = strstr(atcmd_resp, "ERROR");
-        if(y != 0){
-            latest_atcmd_result = SUCCESS;
-            server_conn_status = DISCONNECTED;
-        }else if(x != 0){
-            latest_atcmd_result = SUCCESS;
-            server_conn_status = CONNECTED;
-        }
+    char  *x, *y;
+    x = strstr(atcmd_resp, "CONNECT");      // Function strstr searches for 'CONNECT' in atcmd_resp, so x will be unline NULL also for 'ALREADY CONNECTED'. See strstr() in string.h for more info
+    y = strstr(atcmd_resp, "ERROR");
+    if(y != 0){
+        latest_atcmd_result = SUCCESS;
+        server_conn_status = DISCONNECTED;
+    }else if(x != 0){
+        latest_atcmd_result = SUCCESS;
+        server_conn_status = CONNECTED;
+    }
 }
 
-static uint8_t fetch_WLAN_data_eeprom(struct common_net_info* ap_ssid, struct common_net_info* ap_passw){
+static uint8_t fetch_WLAN_data_eeprom(cni* ap_ssid, 
+        cni *ap_passw){
     uint8_t i;
 
     ap_ssid->len = DATAEE_ReadByte(ap_ssid->start_pos);
@@ -253,7 +250,7 @@ static uint8_t fetch_WLAN_data_eeprom(struct common_net_info* ap_ssid, struct co
     return 1;
 }
 
-static uint8_t fetch_server_data_eeprom(struct common_net_info* server_ip, struct common_net_info* server_port){
+static uint8_t fetch_server_data_eeprom(cni *server_ip, cni *server_port){
     uint8_t i;
     server_port->len = DATAEE_ReadByte(server_port->start_pos);
     server_ip->len = DATAEE_ReadByte(server_ip->start_pos);
@@ -276,80 +273,87 @@ static void clear_buffer(uint8_t filler, size_t size,...){
 
 }
 
-static void dht11_process_measurements(){
-    uint8_t bytes[5];
-    uint8_t measurement_attempts = 2;
-    uint8_t correct_measurement = 0;
+static void dht11_process_curent_sensor_readings(float* dht11_temperature, 
+        float* dht11_humidity, uint8_t attempts){
+    
+    uint8_t dht11_data_in_bytes[5];
+    bool is_data_valid = false;
     uint8_t tmp;
     uint16_t hum_tmp = 0;
     uint16_t temp_tmp = 0;
     uint16_t tmpdht11;
-    uint8_t s = sizeof(bytes);
-    memset(bytes, 0, sizeof(bytes));
+    volatile const uint16_t* dht_measurements;
+    uint8_t s = sizeof(dht11_data_in_bytes);
+    memset(dht11_data_in_bytes, 0, sizeof(dht11_data_in_bytes));
+    
+    if(attempts == 0)
+        attempts = 1;
 
-    while(!correct_measurement && measurement_attempts--){
+    // <editor-fold defaultstate="collapsed" desc="comment">
+    while (!is_data_valid && attempts--) {
         tmp = 0;
-        memset(bytes, 0, sizeof(bytes));
-
-        dht11_start_measuring();
-        __delay_ms(2000);
-        volatile const uint16_t* dht_measurements = TMR1_retrieve_pulsewidth_measurements();
+        memset(dht11_data_in_bytes, 0, sizeof(dht11_data_in_bytes));
+        TMR1_clear_array_pw_measurements();
+        
+        TMR1_Reload();
+        // Start sequence of signals to instruct DHT11 sensor to send readings of temperature and humidity
+        T1G_SetDigitalOutput();
+        PORTBbits.RB5 = 0;
+        __delay_ms(20);
+        T1G_SetDigitalInput();
+        __delay_us(40);
+        TMR1_StartTimer();
+        TMR1_StartSinglePulseAcquisition();
+        /* Wait maximum time possible for measuring temperature and humidity with dht11. 
+         * Full data is 40 bits, 24 bits possibly HIGH and 8 (fractional  part of humidity) 
+         * always low. 24 * 62.5nsec * 1140 + 8 * 62.nsec * 400. 400 and 1140 is the maximum 
+         * count gained using TMR1 in GATE SINGLE PULSE MODE with clock source 16Mhz and no 
+         * prescaler. This mode is used to bypass software overhead when measuring pulsewidths. 
+         */
+        __delay_ms(3);
+        TMR1_StopTimer();
+   
+        dht_measurements = TMR1_retrieve_pw_measurements();
         for(int b = 0; b < s; b++){
             for(int i = 0; i < 8; i++){
                 tmpdht11 = dht_measurements[tmp++];
                 if(((tmpdht11*62.5)/1000) > 50)
-                    bytes[b] |= (1 << (7-i));
+                    dht11_data_in_bytes[b] |= (1 << (7-i));
             }
         }
-        if(bytes[0]+bytes[1]+bytes[2]+bytes[3] == bytes[4]){
-            correct_measurement = 1;
-        }
+        if(dht11_data_in_bytes[0]+dht11_data_in_bytes[1]+dht11_data_in_bytes[2]
+                +dht11_data_in_bytes[3] == dht11_data_in_bytes[4])
+            is_data_valid = true;
     }
-    if(!correct_measurement){
-        //Data integrity check failed. Log error status code in EEPROM.
-    }
-
-
+    // </editor-fold>
+    
     //DHT-11 40-bit data is presented in Qm.n fixed point format.
-    hum_tmp = (hum_tmp | (bytes[0]) << 8) | bytes[1];
-    temp_tmp = (temp_tmp | (bytes[2] << 8)) | bytes[3];
-    current_humidity = (float) hum_tmp/256;
-    current_temperature = (float) temp_tmp/256;
+    hum_tmp = (hum_tmp | (dht11_data_in_bytes[0]) << 8) | dht11_data_in_bytes[1];
+    temp_tmp = (temp_tmp | (dht11_data_in_bytes[2] << 8)) | dht11_data_in_bytes[3];
+    *dht11_humidity = (float) hum_tmp/256;
+    *dht11_temperature = (float) temp_tmp/256;
+    //Data integrity check failed.
+    // TODO: Implement function that logs status code in EEPROM and puts system to sleep
 }
 
-static void dht11_start_measuring(void){
-    TMR1_Reload();
-    
-    // Start sequence of signals to receive DHT11 sensor readings of temperature and humidity
-    T1G_SetDigitalOutput();
-    PORTBbits.RB5 = 0;
-    __delay_ms(20);
-    T1G_SetDigitalInput();
-    __delay_us(40);
-    TMR1_StartTimer();
-    TMR1_StartSinglePulseAcquisition();
-    __delay_ms(3);
-    TMR1_StopTimer();
-    
-}
+static void acquire_info_for_server_connection_via_tcp_server(cni *wlan_ssid, cni *wlan_passw,
+        cni *server_ip, cni *server_port, uint16_t max_rollovers){
 
-static void acquire_neccessary_info_for_server_connection_via_tcp_server(void){
-// If there are no AP and server info saved on EEPROM, put ESP01 in state to get info from ANDROID/IPHONE app (tcp client)
+    // If there are no AP and server info saved on EEPROM, put ESP01 in state to get info from ANDROID/IPHONE app (tcp client)
     uint8_t is_valid_ap_info = 0;
     uint8_t is_valid_server_info = 0;
-    uint16_t max_rollovers = 600;
     while((wlan_conn_status == DISCONNECTED || server_conn_status == DISCONNECTED) && count_tmr0_rollovers <= max_rollovers){
         boot_esp01_tcpserver();              
         do{
             if(!is_valid_ap_info || wlan_conn_status == DISCONNECTED){
-                if(acquire_WLAN_info(&wlan_ssid, &wlan_passw) == 1){             // Retrieves AP info from first two strings sent through app
+                if(acquire_WLAN_info(wlan_ssid, wlan_passw) == 1){             // Retrieves AP info from first two strings sent through app
                     is_valid_ap_info = 1;                                                                             
                 }else{
                 //TODO: Implement function to return message to tcp client with type of error in AP info
                 }
             }
             if(!is_valid_server_info || server_conn_status == DISCONNECTED){
-                if(acquire_server_info(&server_ip, &server_port) == 1){    // Retrieves server info from last two strings sent through app
+                if(acquire_server_info(server_ip, server_port) == 1){    // Retrieves server info from last two strings sent through app
                     is_valid_server_info = 1;                                                     
                 }else{
                     //TODO: Implement function to return message to tcp client with type of error in server info
@@ -358,29 +362,29 @@ static void acquire_neccessary_info_for_server_connection_via_tcp_server(void){
         }while((!is_valid_ap_info || !is_valid_server_info) && count_tmr0_rollovers <= max_rollovers);
         execute_atcmd("AT+CIPSERVER=0");
         save_atcmd_timeout("+CWJAP_CUR", AT_CMD_TYPE_SET, 20000);
-        connect_to_WLAN(wlan_ssid.value, wlan_passw.value);   
+        connect_to_WLAN(wlan_ssid->value, wlan_passw->value);   
         save_atcmd_timeout("+CWJAP_CUR", AT_CMD_TYPE_SET, 5000);
         if(wlan_conn_status == CONNECTED){
-            write_WLAN_data_to_EEPROM(&wlan_ssid, &wlan_passw);
+            write_WLAN_data_to_EEPROM(wlan_ssid, wlan_passw);
         }else{
             // TODO: Implement function to send back message to tcp client that AP info wasn't accepted
             is_valid_ap_info = 0;
-            memset(wlan_ssid.value, 0, sizeof(wlan_ssid.value));
-            memset(wlan_passw.value, 0, sizeof(wlan_passw.value));
+            memset(wlan_ssid->value, 0, sizeof(wlan_ssid->value));
+            memset(wlan_passw->value, 0, sizeof(wlan_passw->value));
         }
-        connect_to_server(server_ip.value, server_port.value);
+        connect_to_server(server_ip->value, server_port->value);
         if(server_conn_status == CONNECTED){
-            write_server_data_to_EEPROM(&server_ip, &server_port);
+            write_server_data_to_EEPROM(server_ip, server_port);
         }else{
             // TODO: Implement function to send back message to tcp client that server info wasn't accepted
             is_valid_server_info = 0;
-            memset(server_ip.value, 0, sizeof(server_ip.value));
-            memset(server_port.value, 0, sizeof(server_port.value));                
+            memset(server_ip->value, 0, sizeof(server_ip->value));
+            memset(server_port->value, 0, sizeof(server_port->value));                
         }   
     }    
 }
 
-static uint8_t acquire_WLAN_info(struct common_net_info* ssid, struct common_net_info* passw){
+static uint8_t acquire_WLAN_info(cni *ssid, cni *passw){
     if(get_ipd_data(ssid->value, ssid->maxsize) == 0)
         return 0;
     if(get_ipd_data(passw->value, passw->maxsize) == 0)
@@ -388,7 +392,7 @@ static uint8_t acquire_WLAN_info(struct common_net_info* ssid, struct common_net
     return 1;
 }
 
-static uint8_t acquire_server_info(struct common_net_info* ip, struct common_net_info* port){
+static uint8_t acquire_server_info(cni *ip, cni *port){
     // TODO: Implement more test to check if IPv4 notation is correct
     if(get_ipd_data(ip->value, ip->maxsize) == 0)
         return 0;
@@ -437,7 +441,7 @@ static void boot_esp01_tcpserver(void){
 
 }
 
-static void write_WLAN_data_to_EEPROM(struct common_net_info* ssid, struct common_net_info* passw){
+static void write_WLAN_data_to_EEPROM(cni *ssid, cni *passw){
     uint8_t i;
     
     ssid->len = strlen(ssid->value);
@@ -452,7 +456,7 @@ static void write_WLAN_data_to_EEPROM(struct common_net_info* ssid, struct commo
     }    
 }
 
-static void write_server_data_to_EEPROM(struct common_net_info* ip, struct common_net_info* port){
+static void write_server_data_to_EEPROM(cni *ip, cni *port){
     uint8_t i;
     
     ip->len = strlen(ip->value);
@@ -468,7 +472,7 @@ static void write_server_data_to_EEPROM(struct common_net_info* ip, struct commo
     } 
 }
 
-static void acquire_neccessary_WLAN_info_for_server_connection_via_smartconfig(){
+static void acquire_neccessary_info_for_server_connection_via_smartconfig(void){
     TMR0_SetInterruptHandler(increment_tmr0_rollover_count);
     execute_atcmd("AT+CWDHCP_CUR=1,1");
     execute_atcmd("AT+CWSTARTSMART=1");    

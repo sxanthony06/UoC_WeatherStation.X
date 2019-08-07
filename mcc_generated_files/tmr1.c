@@ -163,7 +163,7 @@ bool TMR1_HasOverflowOccured(void)
     return(PIR1bits.TMR1IF);
 }
 
-volatile const uint16_t* TMR1_retrieve_pulsewidth_measurements(void){
+volatile const uint16_t* TMR1_retrieve_pw_measurements(void){
     return pulse_width_measurements;
 }
 
@@ -173,7 +173,8 @@ void TMR1_GATE_ISR(void)
     // Skip first measurement as this is a pulse produced by DHT-11 that doesn't encode humidity measurement.
     if(measurement_number > 0 && (measurement_number < PULSE_WIDTH_MEASUREMENTS_SIZE))
         pulse_width_measurements[measurement_number-1] = TMR1_ReadTimer();
-    TMR1_Reload();
+    TMR1H = 0x00;
+    TMR1L = 0x00;
     T1CONbits.TMR1ON = 1;
     T1GCONbits.T1GGO = 1;
     measurement_number++;
@@ -182,7 +183,7 @@ void TMR1_GATE_ISR(void)
     PIR3bits.TMR1GIF = 0;
 }
 
-void TMR1_prepare_new_measurements(void){
+void TMR1_clear_array_pw_measurements(void){
     measurement_number = 0;
     memset((void*)pulse_width_measurements, 0, sizeof(pulse_width_measurements));
 }

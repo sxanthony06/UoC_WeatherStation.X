@@ -366,7 +366,7 @@ uint8_t TMR1_CheckGateValueStatus(void);
 */
 bool TMR1_HasOverflowOccured(void);
 
-volatile const uint16_t* TMR1_retrieve_pulsewidth_measurements(void);
+volatile const uint16_t* TMR1_retrieve_pw_measurements(void);
 
 /**
   @Summary
@@ -386,6 +386,8 @@ volatile const uint16_t* TMR1_retrieve_pulsewidth_measurements(void);
     None
 */
 void TMR1_GATE_ISR(void);
+
+void TMR1_clear_array_pw_measurements(void);
 
 #ifdef __cplusplus  // Provide C++ Compatibility
 
