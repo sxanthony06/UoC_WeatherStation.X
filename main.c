@@ -143,9 +143,11 @@ void main(void)
     execute_atcmd("ATE0");
     execute_atcmd("AT+CWMODE_DEF=1");           // On power-up ESP01 sets into last configured Station/AP mode (even if not written to FLASH). This AT command defaults it to station mode, consuming less power.
     execute_atcmd("AT+CIPSNTPCFG=1,-4,\"0.pool.ntp.org\",\"1.pool.ntp.org\",\"3.pool.ntp.org\"");   // Configure device's location timezone and network time servers (to get time).
+    execute_atcmd("AT+CWQAP");
     execute_atcmd("AT+CWJAP_CUR?");
+ 
 
-    if(wlan_conn_status == DISCONNECTED){
+    if(wlan_conn_status != CONNECTED){
         if(fetch_WLAN_data_eeprom(&wlan_ssid, &wlan_passw) & fetch_server_data_eeprom(&server_ip, &server_port)){
             connect_to_WLAN(wlan_ssid.value, wlan_passw.value);
 
@@ -161,7 +163,7 @@ void main(void)
                 NOP();
             }
     }
-    if(server_conn_status == DISCONNECTED){
+    if(server_conn_status != CONNECTED){
         if(fetch_server_data_eeprom(&server_ip, &server_port)){
             connect_to_server(server_ip.value, server_port.value);
         }
@@ -232,6 +234,19 @@ static void check_server_conn_callback(const char* atcmd_resp, unsigned char typ
     }
 }
 
+static void parse_sntp_output_callback(const char* atcmd_resp, unsigned char type){
+    char* token;
+    
+    token = strchr(atcmd_resp, ':');    
+    token = strtok(token+1, "\r\n");        
+    if(token != NULL){
+        latest_atcmd_result = SUCCESS;
+        strncpy(date_in_string, token, DATE_STRING_MAX_LENGTH);
+    }else{
+        latest_atcmd_result = ERROR;
+    }
+}
+
 static uint8_t fetch_WLAN_data_eeprom(cni* ap_ssid, 
         cni *ap_passw){
     uint8_t i;
@@ -273,67 +288,56 @@ static void clear_buffer(uint8_t filler, size_t size,...){
 
 }
 
-static void dht11_process_curent_sensor_readings(float* dht11_temperature, 
-        float* dht11_humidity, uint8_t attempts){
+static uint8_t dht11_process_curent_sensor_readings(float* dht11_temperature, 
+        float* dht11_humidity){
     
-    uint8_t dht11_data_in_bytes[5];
-    bool is_data_valid = false;
-    uint8_t tmp;
-    uint16_t hum_tmp = 0;
-    uint16_t temp_tmp = 0;
-    uint16_t tmpdht11;
+    uint8_t data_in_bytes[5], b, i, tmp, s, rslt = 0;
+    uint16_t hum_tmp = 0, temp_tmp = 0, measurement;
     volatile const uint16_t* dht_measurements;
-    uint8_t s = sizeof(dht11_data_in_bytes);
-    memset(dht11_data_in_bytes, 0, sizeof(dht11_data_in_bytes));
     
-    if(attempts == 0)
-        attempts = 1;
+    tmp = 0;
+    s = sizeof(data_in_bytes);
+    memset(data_in_bytes, 0, sizeof(data_in_bytes));
+    TMR3_clear_array_pw_measurements();
 
-    // <editor-fold defaultstate="collapsed" desc="comment">
-    while (!is_data_valid && attempts--) {
-        tmp = 0;
-        memset(dht11_data_in_bytes, 0, sizeof(dht11_data_in_bytes));
-        TMR1_clear_array_pw_measurements();
-        
-        TMR1_Reload();
-        // Start sequence of signals to instruct DHT11 sensor to send readings of temperature and humidity
-        T1G_SetDigitalOutput();
-        PORTBbits.RB5 = 0;
-        __delay_ms(20);
-        T1G_SetDigitalInput();
-        __delay_us(40);
-        TMR1_StartTimer();
-        TMR1_StartSinglePulseAcquisition();
-        /* Wait maximum time possible for measuring temperature and humidity with dht11. 
-         * Full data is 40 bits, 24 bits possibly HIGH and 8 (fractional  part of humidity) 
-         * always low. 24 * 62.5nsec * 1140 + 8 * 62.nsec * 400. 400 and 1140 is the maximum 
-         * count gained using TMR1 in GATE SINGLE PULSE MODE with clock source 16Mhz and no 
-         * prescaler. This mode is used to bypass software overhead when measuring pulsewidths. 
-         */
-        __delay_ms(3);
-        TMR1_StopTimer();
-   
-        dht_measurements = TMR1_retrieve_pw_measurements();
-        for(int b = 0; b < s; b++){
-            for(int i = 0; i < 8; i++){
-                tmpdht11 = dht_measurements[tmp++];
-                if(((tmpdht11*62.5)/1000) > 50)
-                    dht11_data_in_bytes[b] |= (1 << (7-i));
-            }
+    TMR3_Reload();
+    // Start sequence of signals to instruct DHT11 sensor to send readings of temperature and humidity
+    RC0_SetDigitalOutput();
+    PORTBbits.RB5 = 0;
+    __delay_ms(20);
+    RC0_SetDigitalInput();
+    __delay_us(40);
+    TMR3_StartTimer();
+    TMR3_StartSinglePulseAcquisition();
+    /* Wait maximum time possible for measuring temperature and humidity with dht11. 
+     * Full data is 40 bits, 24 bits possibly HIGH and 8 (fractional  part of humidity) 
+     * always low. 24 * 62.5nsec * 1140 + 8 * 62.nsec * 400. 400 and 1140 is the maximum 
+     * count gained using TMR1 in GATE SINGLE PULSE MODE with clock source 16Mhz and no 
+     * prescaler. This mode is used to bypass software overhead when measuring pulsewidths. 
+     */
+    __delay_ms(3);
+    TMR3_StopTimer();
+    dht_measurements = TMR3_retrieve_pw_measurements();
+    for(b = 0; b < s; b++){
+        for(i = 0; i < 8; i++){
+            measurement = dht_measurements[tmp++];
+            if(((measurement*62.5)/1000) > 50)
+                data_in_bytes[b] |= (1 << (7-i));
         }
-        if(dht11_data_in_bytes[0]+dht11_data_in_bytes[1]+dht11_data_in_bytes[2]
-                +dht11_data_in_bytes[3] == dht11_data_in_bytes[4])
-            is_data_valid = true;
     }
-    // </editor-fold>
-    
-    //DHT-11 40-bit data is presented in Qm.n fixed point format.
-    hum_tmp = (hum_tmp | (dht11_data_in_bytes[0]) << 8) | dht11_data_in_bytes[1];
-    temp_tmp = (temp_tmp | (dht11_data_in_bytes[2] << 8)) | dht11_data_in_bytes[3];
-    *dht11_humidity = (float) hum_tmp/256;
-    *dht11_temperature = (float) temp_tmp/256;
+    if(data_in_bytes[0]+data_in_bytes[1]+data_in_bytes[2]+data_in_bytes[3] == data_in_bytes[4]){ 
+        //DHT-11 40-bit data is presented in Qm.n fixed point format.
+        hum_tmp = (hum_tmp | (data_in_bytes[0]) << 8) | data_in_bytes[1];
+        temp_tmp = (temp_tmp | (data_in_bytes[2] << 8)) | data_in_bytes[3];
+        *dht11_humidity = (float) hum_tmp/256;
+        *dht11_temperature = (float) temp_tmp/256;
+        rslt = 1;
+    }else{
     //Data integrity check failed.
     // TODO: Implement function that logs status code in EEPROM and puts system to sleep
+        
+    }
+    return rslt;
 }
 
 static void acquire_info_for_server_connection_via_tcp_server(cni *wlan_ssid, cni *wlan_passw,

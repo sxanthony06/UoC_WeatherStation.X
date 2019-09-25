@@ -48,8 +48,7 @@
 
 #include "interrupt_manager.h"
 #include "..\i2c.h"
-#include "tmr1.h"
-#include "adc.h"
+#include "tmr3.h"
 #include "tmr0.h"
 #include "eusart1.h"
 
@@ -60,6 +59,9 @@ void  INTERRUPT_Initialize (void)
 
     // Assign peripheral interrupt priority vectors
 
+    // TMRGI - high priority
+    IPR3bits.TMR3GIP = 1;
+
     // RCI - high priority
     IPR1bits.RC1IP = 1;
 
@@ -69,12 +71,6 @@ void  INTERRUPT_Initialize (void)
 
     // TMRI - low priority
     INTCON2bits.TMR0IP = 0;    
-
-    // TMRGI - low priority
-    IPR3bits.TMR1GIP = 0;    
-
-    // BCLI - low priority
-    IPR3bits.BCL2IP = 0;    
 
 }
 
@@ -102,9 +98,9 @@ void __interrupt(low_priority) INTERRUPT_InterruptManagerLow (void)
     {
         TMR0_ISR();
     }
-    else if(PIE3bits.TMR1GIE == 1 && PIR3bits.TMR1GIF == 1)
+    else if(PIE3bits.TMR3GIE == 1 && PIR3bits.TMR3GIF == 1)
         {
-        TMR1_GATE_ISR();
+        TMR3_GATE_ISR();
     } 
     else if(PIE3bits.BCL2IE == 1 && PIR3bits.BCL2IF == 1)
     {

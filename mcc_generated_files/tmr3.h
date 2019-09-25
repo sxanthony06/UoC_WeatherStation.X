@@ -1,17 +1,17 @@
 /**
-  TMR1 Generated Driver API Header File
+  TMR3 Generated Driver API Header File
 
   @Company
     Microchip Technology Inc.
 
   @File Name
-    tmr1.h
+    tmr3.h
 
   @Summary
-    This is the generated header file for the TMR1 driver using PIC10 / PIC12 / PIC16 / PIC18 MCUs
+    This is the generated header file for the TMR3 driver using PIC10 / PIC12 / PIC16 / PIC18 MCUs
 
   @Description
-    This header file provides APIs for driver for TMR1.
+    This header file provides APIs for driver for TMR3.
     Generation Information :
         Product Revision  :  PIC10 / PIC12 / PIC16 / PIC18 MCUs - 1.76
         Device            :  PIC18F45K22
@@ -44,8 +44,8 @@
     SOFTWARE.
 */
 
-#ifndef TMR1_H
-#define TMR1_H
+#ifndef TMR3_H
+#define TMR3_H
 
 /**
   Section: Included Files
@@ -62,16 +62,16 @@
 
 
 /**
-  Section: TMR1 APIs
+  Section: TMR3 APIs
 */
 
 /**
   @Summary
-    Initializes the TMR1
+    Initializes the TMR3
 
   @Description
-    This routine initializes the TMR1.
-    This routine must be called before any other TMR1 routine is called.
+    This routine initializes the TMR3.
+    This routine must be called before any other TMR3 routine is called.
     This routine should only be called once during system initialization.
 
   @Preconditions
@@ -88,20 +88,20 @@
 
   @Example
     <code>
-    TMR1_Initialize();
+    TMR3_Initialize();
     </code>
 */
-void TMR1_Initialize(void);
+void TMR3_Initialize(void);
 
 /**
   @Summary
-    Start TMR1
+    Start TMR3
 
   @Description
-    This routine is used to  Start TMR1.
+    This routine is used to  Start TMR3.
 
   @Preconditions
-    The TMR1_Initialize() routine should be called
+    The TMR3_Initialize() routine should be called
     prior to use this routine.
 
   @Param
@@ -112,27 +112,27 @@ void TMR1_Initialize(void);
 
   @Example
     <code>
-    // Initialize TMR1 module
+    // Initialize TMR3 module
 
-    // Start TMR1
-    TMR1_StartTimer();
+    // Start TMR3
+    TMR3_StartTimer();
 
     while(1)
     {
     }
     </code>
  */
-void TMR1_StartTimer(void);
+void TMR3_StartTimer(void);
 
 /**
   @Summary
-    Stop TMR1
+    Stop TMR3
 
   @Description
-    This routine is used to  Stop TMR1.
+    This routine is used to  Stop TMR3.
 
   @Preconditions
-    The TMR1_Initialize() routine should be called
+    The TMR3_Initialize() routine should be called
     prior to use this routine.
 
   @Param
@@ -143,60 +143,60 @@ void TMR1_StartTimer(void);
 
   @Example
     </code>
-    TMR1_Initialize();
+    TMR3_Initialize();
 
-    TMR1_StartTimer();
-    if(TMR1_HasOverflowOccured())
+    TMR3_StartTimer();
+    if(TMR3_HasOverflowOccured())
     {
-        TMR1_StopTimer();
+        TMR3_StopTimer();
     }
     <code>
  */
-void TMR1_StopTimer(void);
+void TMR3_StopTimer(void);
 
 /**
   @Summary
-    Read TMR1 register.
+    Read TMR3 register.
 
   @Description
-    This routine is used to  Read TMR1 register.
+    This routine is used to  Read TMR3 register.
 
   @Preconditions
-    The TMR1_Initialize() routine should be called
+    The TMR3_Initialize() routine should be called
     prior to use this routine.
 
   @Param
     None
 
   @Returns
-    TMR1 value at the time of the function call read as a 16-bit value
+    TMR3 value at the time of the function call read as a 16-bit value
 
   @Example
     <code>
     uint16_t timerVal=0;
 
-    TMR1_Initialize();
+    TMR3_Initialize();
 
-    TMR1_StartTimer();
+    TMR3_StartTimer();
 
     // some delay or code
 
-    TMR1_StopTimer();
+    TMR3_StopTimer();
 
-    timerVal=TMR1_ReadTimer();
+    timerVal=TMR3_ReadTimer();
     </code>
  */
-uint16_t TMR1_ReadTimer(void);
+uint16_t TMR3_ReadTimer(void);
 
 /**
   @Summary
-    Write TMR1 register.
+    Write TMR3 register.
 
   @Description
-    This routine is used to Write TMR1 register.
+    This routine is used to Write TMR3 register.
 
   @Preconditions
-    The TMR1_Initialize() routine should be called
+    The TMR3_Initialize() routine should be called
     prior to use this routine.
 
   @Param
@@ -207,22 +207,22 @@ uint16_t TMR1_ReadTimer(void);
 
   @Example
     <code>
-    TMR1_Initialize();
-    TMR1_WriteTimer(0x055);
-    TMR1_StartTimer();
+    TMR3_Initialize();
+    TMR3_WriteTimer(0x055);
+    TMR3_StartTimer();
     </code>
  */
-void TMR1_WriteTimer(uint16_t timerVal);
+void TMR3_WriteTimer(uint16_t timerVal);
 
 /**
   @Summary
-    Reload TMR1 register.
+    Reload TMR3 register.
 
   @Description
-    This routine is used to reload TMR1 register.
+    This routine is used to reload TMR3 register.
 
   @Preconditions
-    The TMR1_Initialize() routine should be called
+    The TMR3_Initialize() routine should be called
     prior to use this routine.
 
   @Param
@@ -233,29 +233,29 @@ void TMR1_WriteTimer(uint16_t timerVal);
 
   @Example
     <code>
-    TMR1_Initialize();
-    TMR1_StartTimer();
+    TMR3_Initialize();
+    TMR3_StartTimer();
 
-    if(TMR1_HasOverflowOccured())
+    if(TMR3_HasOverflowOccured())
     {
-        TMR1_StopTimer();
+        TMR3_StopTimer();
     }
 
-    TMR1_Reload();}
+    TMR3_Reload();}
     </code>
 */
-void TMR1_Reload(void);
+void TMR3_Reload(void);
 
 /**
   @Summary
-    Starts the single pulse acquisition in TMR1 gate operation.
+    Starts the single pulse acquisition in TMR3 gate operation.
 
   @Description
-    This function starts the single pulse acquisition in TMR1 gate operation.
-    This function must be used when the TMR1 gate is enabled.
+    This function starts the single pulse acquisition in TMR3 gate operation.
+    This function must be used when the TMR3 gate is enabled.
 
   @Preconditions
-    Initialize  the TMR1 with gate enable before calling this function.
+    Initialize  the TMR3 with gate enable before calling this function.
 
   @Param
     None
@@ -268,35 +268,35 @@ void TMR1_Reload(void);
     uint16_t xVal;
     uint16_t yVal;
 
-    //enable TMR1 singlepulse mode
-    TMR1_StartSinglePulseAcquistion();
+    //enable TMR3 singlepulse mode
+    TMR3_StartSinglePulseAcquistion();
 
-    //check TMR1 gate status
-    if(TMR1_CheckGateValueStatus()== 0)
+    //check TMR3 gate status
+    if(TMR3_CheckGateValueStatus()== 0)
     {
-        xVal = TMR1_ReadTimer();
+        xVal = TMR3_ReadTimer();
     }
 
     // wait untill gate interrupt occured
-    while(TMR1GIF == 0)
+    while(TMR3GIF == 0)
     {
     }
 
-    yVal = TMR1_ReadTimer();
+    yVal = TMR3_ReadTimer();
     </code>
 */
-void TMR1_StartSinglePulseAcquisition(void);
+void TMR3_StartSinglePulseAcquisition(void);
 
 /**
   @Summary
     Check the current state of Timer1 gate.
 
   @Description
-    This function reads the TMR1 gate value and return it.
-    This function must be used when the TMR1 gate is enabled.
+    This function reads the TMR3 gate value and return it.
+    This function must be used when the TMR3 gate is enabled.
 
   @Preconditions
-    Initialize  the TMR1 with gate enable before calling this function.
+    Initialize  the TMR3 with gate enable before calling this function.
 
   @Param
     None
@@ -309,34 +309,34 @@ void TMR1_StartSinglePulseAcquisition(void);
     uint16_t xVal;
     uint16_t yVal;
 
-    //enable TMR1 singlepulse mode
-    TMR1_StartSinglePulseAcquistion();
+    //enable TMR3 singlepulse mode
+    TMR3_StartSinglePulseAcquistion();
 
-    //check TMR1 gate status
-    if(TMR1_CheckGateValueStatus()== 0)
+    //check TMR3 gate status
+    if(TMR3_CheckGateValueStatus()== 0)
     {
-        xVal = TMR1_ReadTimer();
+        xVal = TMR3_ReadTimer();
     }
 
     //wait untill gate interrupt occured
-    while(TMR1IF == 0)
+    while(TMR3IF == 0)
     {
     }
 
-    yVal = TMR1_ReadTimer();
+    yVal = TMR3_ReadTimer();
     </code>
 */
-uint8_t TMR1_CheckGateValueStatus(void);
+uint8_t TMR3_CheckGateValueStatus(void);
 
 /**
   @Summary
-    Get the TMR1 overflow status.
+    Get the TMR3 overflow status.
 
   @Description
-    This routine get the TMR1 overflow status.
+    This routine get the TMR3 overflow status.
 
   @Preconditions
-    The TMR1_Initialize() routine should be called
+    The TMR3_Initialize() routine should be called
     prior to use this routine.
 
   @Param
@@ -351,22 +351,22 @@ uint8_t TMR1_CheckGateValueStatus(void);
 
   @Example
      <code>
-     TMR1_Initialize();
+     TMR3_Initialize();
 
-     TMR1_StartTimer();
+     TMR3_StartTimer();
 
     while(1)
     {
-        if(TMR1_HasOverflowOccured())
+        if(TMR3_HasOverflowOccured())
         {
-            TMR1_StopTimer();
+            TMR3_StopTimer();
         }
     }
     </code>
 */
-bool TMR1_HasOverflowOccured(void);
+bool TMR3_HasOverflowOccured(void);
 
-volatile const uint16_t* TMR1_retrieve_pw_measurements(void);
+volatile const uint16_t* TMR3_retrieve_pw_measurements(void);
 
 /**
   @Summary
@@ -385,9 +385,9 @@ volatile const uint16_t* TMR1_retrieve_pw_measurements(void);
   @Returns
     None
 */
-void TMR1_GATE_ISR(void);
+void TMR3_GATE_ISR(void);
 
-void TMR1_clear_array_pw_measurements(void);
+void TMR3_clear_array_pw_measurements(void);
 
 #ifdef __cplusplus  // Provide C++ Compatibility
 
@@ -395,7 +395,7 @@ void TMR1_clear_array_pw_measurements(void);
 
 #endif
 
-#endif // TMR1_H
+#endif // TMR3_H
 /**
  End of File
 */

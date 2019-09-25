@@ -1,17 +1,17 @@
 /**
-  TMR1 Generated Driver File
+  TMR3 Generated Driver File
 
   @Company
     Microchip Technology Inc.
 
   @File Name
-    tmr1.c
+    tmr3.c
 
   @Summary
-    This is the generated driver implementation file for the TMR1 driver using PIC10 / PIC12 / PIC16 / PIC18 MCUs
+    This is the generated driver implementation file for the TMR3 driver using PIC10 / PIC12 / PIC16 / PIC18 MCUs
 
   @Description
-    This source file provides APIs for TMR1.
+    This source file provides APIs for TMR3.
     Generation Information :
         Product Revision  :  PIC10 / PIC12 / PIC16 / PIC18 MCUs - 1.76
         Device            :  PIC18F45K22
@@ -48,142 +48,144 @@
   Section: Included Files
 */
 
+
 #include <xc.h>
 #include <string.h>
-#include "tmr1.h"
+#include "tmr3.h"
 #include "utilities.h"
 
 /**
   Section: Global Variable Definitions
 */
-static volatile uint16_t timer1ReloadVal;
+static volatile uint16_t timer3ReloadVal;
 static volatile uint16_t pulse_width_measurements[PULSE_WIDTH_MEASUREMENTS_SIZE];
 static volatile uint8_t measurement_number = 0;
+
 /**
-  Section: TMR1 APIs
+  Section: TMR3 APIs
 */
 
-void TMR1_Initialize(void)
+void TMR3_Initialize(void)
 {
     //Set the Timer to the options selected in the GUI
 
-    //T1GSS T1G_pin; TMR1GE enabled; T1GTM disabled; T1GPOL high; T1GGO done; T1GSPM enabled; 
-    T1GCON = 0xD0;
+    //T3GSS T3G_pin; TMR3GE enabled; T3GTM disabled; T3GPOL high; T3GGO done; T3GSPM enabled; 
+    T3GCON = 0xD0;
 
-    //TMR1H 0; 
-    TMR1H = 0x00;
+    //TMR3H 0; 
+    TMR3H = 0x00;
 
-    //TMR1L 0; 
-    TMR1L = 0x00;
+    //TMR3L 0; 
+    TMR3L = 0x00;
 
     // Load the TMR value to reload variable
-    timer1ReloadVal=TMR1;
+    timer3ReloadVal=TMR3;
 
     // Clearing IF flag.
-    PIR1bits.TMR1IF = 0;
+    PIR2bits.TMR3IF = 0;
 
     // Clearing IF flag before enabling the interrupt.
-    PIR3bits.TMR1GIF = 0;
+    PIR3bits.TMR3GIF = 0;
 
-    // Enabling TMR1 interrupt.
-    PIE3bits.TMR1GIE = 1;
+    // Enabling TMR3 interrupt.
+    PIE3bits.TMR3GIE = 1;
 
-    // T1CKPS 1:1; T1OSCEN disabled; T1SYNC do_not_synchronize; TMR1CS FOSC; TMR1ON disabled; T1RD16 enabled; 
-    T1CON = 0x46;
+    // T3CKPS 1:1; T3OSCEN disabled; nT3SYNC do_not_synchronize; TMR3CS FOSC; TMR3ON disabled; T3RD16 enabled; 
+    T3CON = 0x46;
 }
 
-void TMR1_StartTimer(void)
+void TMR3_StartTimer(void)
 {
     // Start the Timer by writing to TMRxON bit
-    T1CONbits.TMR1ON = 1;
+    T3CONbits.TMR3ON = 1;
 }
 
-void TMR1_StopTimer(void)
+void TMR3_StopTimer(void)
 {
     // Stop the Timer by writing to TMRxON bit
-    T1CONbits.TMR1ON = 0;
+    T3CONbits.TMR3ON = 0;
 }
 
-uint16_t TMR1_ReadTimer(void)
+uint16_t TMR3_ReadTimer(void)
 {
     uint16_t readVal;
     uint8_t readValHigh;
     uint8_t readValLow;
     
-    T1CONbits.T1RD16 = 1;
+    T3CONbits.T3RD16 = 1;
 	
-    readValLow = TMR1L;
-    readValHigh = TMR1H;
+    readValLow = TMR3L;
+    readValHigh = TMR3H;
     
     readVal = ((uint16_t)readValHigh << 8) | readValLow;
 
     return readVal;
 }
 
-void TMR1_WriteTimer(uint16_t timerVal)
+void TMR3_WriteTimer(uint16_t timerVal)
 {
-    if (T1CONbits.T1SYNC == 1)
+    if (T3CONbits.nT3SYNC == 1)
     {
         // Stop the Timer by writing to TMRxON bit
-        T1CONbits.TMR1ON = 0;
+        T3CONbits.TMR3ON = 0;
 
-        // Write to the Timer1 register
-        TMR1H = (timerVal >> 8);
-        TMR1L = (uint8_t) timerVal;
+        // Write to the Timer3 register
+        TMR3H = (timerVal >> 8);
+        TMR3L = (uint8_t) timerVal;
 
         // Start the Timer after writing to the register
-        T1CONbits.TMR1ON =1;
+        T3CONbits.TMR3ON =1;
     }
     else
     {
-        // Write to the Timer1 register
-        TMR1H = (timerVal >> 8);
-        TMR1L = (uint8_t) timerVal;
+        // Write to the Timer3 register
+        TMR3H = (timerVal >> 8);
+        TMR3L = (uint8_t) timerVal;
     }
 }
 
-void TMR1_Reload(void)
+void TMR3_Reload(void)
 {
-    TMR1_WriteTimer(timer1ReloadVal);
+    TMR3_WriteTimer(timer3ReloadVal);
 }
 
-void TMR1_StartSinglePulseAcquisition(void)
+void TMR3_StartSinglePulseAcquisition(void)
 {
-    T1GCONbits.T1GGO = 1;
+    T3GCONbits.T3GGO = 1;
 }
 
-uint8_t TMR1_CheckGateValueStatus(void)
+uint8_t TMR3_CheckGateValueStatus(void)
 {
-    return T1GCONbits.T1GVAL;
+    return T3GCONbits.T3GVAL;
 }
 
-bool TMR1_HasOverflowOccured(void)
+bool TMR3_HasOverflowOccured(void)
 {
     // check if  overflow has occurred by checking the TMRIF bit
-    return(PIR1bits.TMR1IF);
+    return(PIR2bits.TMR3IF);
 }
 
-volatile const uint16_t* TMR1_retrieve_pw_measurements(void){
+volatile const uint16_t* TMR3_retrieve_pw_measurements(void){
     return pulse_width_measurements;
 }
 
-void TMR1_GATE_ISR(void)
+void TMR3_GATE_ISR(void)
 {
-    T1CONbits.TMR1ON = 0;
+    T3CONbits.TMR3ON = 0;
     // Skip first measurement as this is a pulse produced by DHT-11 that doesn't encode humidity measurement.
     if(measurement_number > 0 && (measurement_number < PULSE_WIDTH_MEASUREMENTS_SIZE))
-        pulse_width_measurements[measurement_number-1] = TMR1_ReadTimer();
-    TMR1H = 0x00;
-    TMR1L = 0x00;
-    T1CONbits.TMR1ON = 1;
-    T1GCONbits.T1GGO = 1;
+        pulse_width_measurements[measurement_number-1] = TMR3_ReadTimer();
+    TMR3H = 0x00;
+    TMR3L = 0x00;
+    T3CONbits.TMR3ON = 1;
+    T3GCONbits.T3GGO = 1;
     measurement_number++;
             
     // Clear the TMR1 interrupt flag
-    PIR3bits.TMR1GIF = 0;
+    PIR3bits.TMR3GIF = 0;
 }
 
-void TMR1_clear_array_pw_measurements(void){
+void TMR3_clear_array_pw_measurements(void){
     measurement_number = 0;
     memset((void*)pulse_width_measurements, 0, sizeof(pulse_width_measurements));
 }

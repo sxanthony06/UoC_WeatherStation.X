@@ -42,7 +42,7 @@ uint8_t engine_initiate(ENGINE_uartWriteHandler write_handler, ENGINE_uartReadHa
         ENGINE_countRxBufferHandler count_unread_chard_handler,
         ENGINE_delayInMilliSecHandler delay_in_ms);
 
-static void send_text_via_uart(const char* data_out);
+void transmit_string_via_uart(const char* data_out);
 
 static void retrieve_uart_buffer_content(char *const);
 

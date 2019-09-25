@@ -29,6 +29,8 @@ extern "C" {
 // TMR1 declarations    
 #define PULSE_WIDTH_MEASUREMENTS_SIZE 40
 
+// SNTP time declarations
+#define DATE_STRING_MAX_LENGTH  26    
 /**
   Section: Macro functions declarations
 */
@@ -47,7 +49,10 @@ extern "C" {
 
 #define AMOUNT_OF_CHAR_TO_IGNORE_IN_ATCMD 2
     
-#define AT_CMD_MAX_LENGTH   45			    
+#define AT_CMD_MAX_LENGTH   45
+    
+// PAYLOAD
+#define UNFORMATTED_PAYLOAD "{\"DD\":%u,\"FF\":%u,\"SLP\":%u,\"T\":%.2f,\"RH\":%.2f,\"PCP1M\":%u}\\0"
 
 // AT COMMAND results
 enum at_cmd_results{SUCCESS, FAILURE, ERROR};

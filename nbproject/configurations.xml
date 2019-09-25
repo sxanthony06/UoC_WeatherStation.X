@@ -13,9 +13,8 @@
         <itemPath>mcc_generated_files/interrupt_manager.h</itemPath>
         <itemPath>mcc_generated_files/eusart1.h</itemPath>
         <itemPath>mcc_generated_files/memory.h</itemPath>
-        <itemPath>mcc_generated_files/adc.h</itemPath>
-        <itemPath>mcc_generated_files/tmr1.h</itemPath>
         <itemPath>mcc_generated_files/tmr0.h</itemPath>
+        <itemPath>mcc_generated_files/tmr3.h</itemPath>
       </logicalFolder>
       <itemPath>library/at_parser.h</itemPath>
       <itemPath>engine.h</itemPath>
@@ -38,9 +37,8 @@
         <itemPath>mcc_generated_files/eusart1.c</itemPath>
         <itemPath>mcc_generated_files/interrupt_manager.c</itemPath>
         <itemPath>mcc_generated_files/memory.c</itemPath>
-        <itemPath>mcc_generated_files/adc.c</itemPath>
-        <itemPath>mcc_generated_files/tmr1.c</itemPath>
         <itemPath>mcc_generated_files/tmr0.c</itemPath>
+        <itemPath>mcc_generated_files/tmr3.c</itemPath>
       </logicalFolder>
       <itemPath>main.c</itemPath>
       <itemPath>library/at_parser.c</itemPath>
@@ -67,11 +65,11 @@
         <targetPluginBoard></targetPluginBoard>
         <platformTool>pk4hybrid</platformTool>
         <languageToolchain>XC8</languageToolchain>
-        <languageToolchainVersion>2.05</languageToolchainVersion>
+        <languageToolchainVersion>2.10</languageToolchainVersion>
         <platform>3</platform>
       </toolsSet>
       <packs>
-        <pack name="PIC18F-K_DFP" vendor="Microchip" version="1.0.48"/>
+        <pack name="PIC18F-K_DFP" vendor="Microchip" version="1.1.58"/>
       </packs>
       <compileType>
         <linkerTool>
@@ -580,6 +578,9 @@
                   value=""/>
         <property key="warningmessagebreakoptions.warningmessages" value="holdstate"/>
       </Simulator>
+      <XC8-CO>
+        <property key="coverage-enable" value=""/>
+      </XC8-CO>
       <XC8-config-global>
         <property key="advanced-elf" value="true"/>
         <property key="gcc-opt-driver-new" value="true"/>
@@ -601,6 +602,7 @@
                   value="Press to browse for a specific firmware version"/>
         <property key="ToolFirmwareOption.UpdateOptions"
                   value="ToolFirmwareOption.UseLatest"/>
+        <property key="communication.activationmode" value="nohv"/>
         <property key="communication.interface"
                   value="${communication.interface.default}"/>
         <property key="communication.speed" value="${communication.speed.default}"/>
@@ -619,6 +621,9 @@
         <property key="memories.programmemory" value="true"/>
         <property key="memories.programmemory.ranges" value="0-7fff"/>
         <property key="poweroptions.powerenable" value="false"/>
+        <property key="programmerToGoFilePath"
+                  value="C:/Users/sxant/MPLABXProjects/UoC_WeatherStation.X/debug/PICKIT4/UoC_WeatherStation_ptg"/>
+        <property key="programmerToGoImageName" value="UoC_WeatherStation_ptg"/>
         <property key="programoptions.donoteraseauxmem" value="false"/>
         <property key="programoptions.eraseb4program" value="true"/>
         <property key="programoptions.ledbrightness" value="5"/>
@@ -637,6 +642,7 @@
         <property key="programoptions.programcalmem" value="false"/>
         <property key="programoptions.programuserotp" value="false"/>
         <property key="programoptions.testmodeentrymethod" value="VDDFirst"/>
+        <property key="ptgSendImage" value="true"/>
         <property key="voltagevalue" value="5.0"/>
       </pk4hybrid>
     </conf>
