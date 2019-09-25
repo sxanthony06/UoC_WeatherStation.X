@@ -54,6 +54,7 @@
 #include "interrupt_manager.h"
 #include "i2c.h"
 #include "tmr3.h"
+#include "ext_int.h"
 #include "memory.h"
 #include "tmr0.h"
 #include "eusart1.h"

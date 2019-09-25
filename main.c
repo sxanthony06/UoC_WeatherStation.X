@@ -49,11 +49,17 @@
 #include <stdio.h>
 #include "utilities.h"
 #include <stdbool.h>
+#include <math.h>
 
 
 static enum at_cmd_results latest_atcmd_result;
 static enum conn_status wlan_conn_status, server_conn_status;
+static volatile bool has_10sec_passed = false;
 static volatile uint16_t count_tmr0_rollovers = 0;
+static char date_in_string[DATE_STRING_MAX_LENGTH];
+
+static volatile uint8_t revper10sec = 0;
+static volatile uint8_t pcp10sec = 0;
 
 typedef struct common_net_info{
     uint8_t start_pos;
@@ -65,10 +71,11 @@ typedef struct common_net_info{
 static void default_ATCMD_response_parser(const char*, unsigned char );
 static void check_WLAN_connection_callback(const char*, unsigned char );
 static void check_server_conn_callback(const char*, unsigned char);
+static void parse_sntp_output_callback(const char*, unsigned char);
 static uint8_t fetch_WLAN_data_eeprom(cni*, cni*);
 static uint8_t fetch_server_data_eeprom(cni*, cni*);
 static void clear_buffer(uint8_t, size_t,...);
-static void dht11_process_curent_sensor_readings(float* dht11_temperature, float* dht11_humidity, uint8_t attempts);
+static uint8_t dht11_process_curent_sensor_readings(uint8_t* dht11_temperature, uint8_t* dht11_humidity);
 static uint8_t acquire_WLAN_info(cni*, cni*);
 static uint8_t acquire_server_info(cni*, cni*);
 static void acquire_info_for_server_connection_via_tcp_server(cni*, cni*, cni*, cni*, uint16_t);
@@ -79,7 +86,9 @@ static void connect_to_server(const char*, const char*);
 static void write_WLAN_data_to_EEPROM(cni*, cni*);
 static void write_server_data_to_EEPROM(cni*, cni*);
 static void increment_tmr0_rollover_count(void);
-
+static uint16_t get_wind_direction_angle(void);
+void increase_pcp_in10sec(void);
+void increase_rev_in_10sec(void);
 
 /*
                          Main application
@@ -87,20 +96,26 @@ static void increment_tmr0_rollover_count(void);
 void main(void)
 {
     T_AT_storage handlers_store[5];
-    float dht11_temperature, dht11_humidity;
+    uint8_t dht11_temperature = 0;
+    uint16_t dht11_humidity = 0;
+    int16_t final_wind_direction_angle = 0;
+    int16_t bmp180_temperature = 0, sample_counter = 0;
+    uint16_t bmp180_pressure = 0; 
 
     cni wlan_ssid = {0, EEPROM_STRING_MAX_LENGTH, 0};
-    cni wlan_passw = {wlan_ssid.start_pos + wlan_ssid.maxsize + 1, EEPROM_STRING_MAX_LENGTH, 0};
-    cni server_ip = {wlan_passw.start_pos + wlan_passw.maxsize + 1, EEPROM_STRING_MAX_LENGTH, 0};
-    cni server_port = {server_ip.start_pos + server_ip.maxsize + 1, EEPROM_SERVER_PORT_MAX_LENGTH, 0};
+    cni wlan_passw = {0 + (1*EEPROM_STRING_MAX_LENGTH) + 1, EEPROM_STRING_MAX_LENGTH, 0};
+    cni server_ip = {0 + (2*EEPROM_STRING_MAX_LENGTH) + 2, EEPROM_STRING_MAX_LENGTH, 0};
+    cni server_port = {0 + (3*EEPROM_STRING_MAX_LENGTH) + 3, EEPROM_SERVER_PORT_MAX_LENGTH, 0};
 
     memset(wlan_ssid.value, 0, wlan_ssid.maxsize);
     memset(wlan_passw.value, 0, wlan_passw.maxsize);
     memset(server_ip.value, 0, server_ip.maxsize);
     memset(server_port.value, 0, server_port.maxsize);
     
+    memset(date_in_string, 0, DATE_STRING_MAX_LENGTH);
+    
     struct bmp180_dev dev;
-    dev.dev_id = BMP180_I2C_ADDR;
+    dev.dev_id = (0xEE>>1);
     dev.delay_ms = SYSTEM_DELAY_IN_MS;
     dev.read = I2C_read;
     dev.write = I2C_write;
@@ -134,11 +149,12 @@ void main(void)
 
     engine_initiate(EUSART1_Write, EUSART1_Read, EUSART1_is_rx_ready, SYSTEM_DELAY_IN_MS);
     parser_initiate(default_ATCMD_response_parser, 100, handlers_store);
-    TMR0_SetInterruptHandler(increment_tmr0_rollover_count);
-    bmp180_init(&dev);
+    bmp180_init(&dev);    
+    TMR0_SetInterruptHandler(increment_tmr0_rollover_count); 
     
     save_atcmd_handler("+CWJAP_CUR", AT_CMD_TYPE_SET, 7000, check_WLAN_connection_callback);
-    save_atcmd_handler("+CIPSTART", AT_CMD_TYPE_SET, 2000, check_server_conn_callback);     
+    save_atcmd_handler("+CIPSTART", AT_CMD_TYPE_SET, 2000, check_server_conn_callback);
+    save_atcmd_handler("+CIPSNTPTIME", AT_CMD_TYPE_QUERY, 100, parse_sntp_output_callback);
     
     execute_atcmd("ATE0");
     execute_atcmd("AT+CWMODE_DEF=1");           // On power-up ESP01 sets into last configured Station/AP mode (even if not written to FLASH). This AT command defaults it to station mode, consuming less power.
@@ -168,12 +184,82 @@ void main(void)
             connect_to_server(server_ip.value, server_port.value);
         }
     }
-
-    dht11_process_curent_sensor_readings(&dht11_humidity, &dht11_temperature, 2);
     
+    count_tmr0_rollovers = 0;
+    TMR0_Reload();
+    TMR0_StartTimer();
+        
+    uint8_t dht11_slice_humidity = 0, dht11_slice_temp = 0;
+    int8_t bmp180_slice_temp = 0;
+    uint16_t bmp180_slice_pressure = 0, tmp_wind_dir_angle = 0;
+    double wind_dir_in_rad = 0, wind_dir_x_comp = 0, wind_dir_y_comp = 0; 
+    char buf[100] = "";
     while (1)
     {
-        __delay_ms(1000);
+
+        
+        if(count_tmr0_rollovers >= 10){
+            sample_counter++;
+            count_tmr0_rollovers = 0;
+            
+            /*TODO: Implement error checking for measurements. Errors have consequences for calculation of averages (numerator)*/
+            dht11_process_curent_sensor_readings(&dht11_slice_temp, &dht11_slice_humidity);
+            bmp180_get_uncompensated_temperature_data(&dev);
+            bmp180_get_compensated_temp_32bit(&bmp180_slice_temp, &dev);
+            bmp180_get_uncompensated_pressure_data(&dev, 1);
+            bmp180_get_compensated_presure_32bit(&bmp180_slice_pressure, &dev);
+            tmp_wind_dir_angle = get_wind_direction_angle();
+            wind_dir_in_rad = tmp_wind_dir_angle * (M_PI/180);
+            wind_dir_x_comp += cos(wind_dir_in_rad);      
+            wind_dir_y_comp += sin(wind_dir_in_rad);  
+            
+            //bmp180_temperature += bmp180_slice_temp;
+            bmp180_pressure += bmp180_slice_pressure;
+            dht11_humidity += dht11_slice_humidity;
+            dht11_temperature += dht11_slice_temp;
+            
+            tmp_wind_dir_angle = 0;
+                                    
+            if(sample_counter == 5){
+                /*TODO: Write code that check for wlan and server connection.
+                 * Fetch info from EEPROM or turn on ESP01 tcp server to receive
+                 * to receive it. If not possible, log error and put PIC18 to SLEEP.
+                 */
+            }else if(sample_counter == 6){
+                /*TODO: Send AT command that check server connection and implement callback for that AT command that changes value of server_conn_status*/
+                if(server_conn_status != CONNECTED)
+                    connect_to_server(server_ip.value, server_port.value);
+                
+                bmp180_pressure /= sample_counter;
+                //bmp180_temperature /= sample_counter;
+                dht11_humidity /= sample_counter;
+                dht11_temperature /= sample_counter;
+                wind_dir_x_comp /= sample_counter;
+                wind_dir_y_comp /= sample_counter;
+                final_wind_direction_angle = (signed int)((180/M_PI) * atan2((double)wind_dir_y_comp, (double)wind_dir_x_comp));
+                        
+                execute_atcmd("AT+CIPSNTPTIME?");                
+                /*TODO: Implement callback for AT command 'AT+CIPSNTPTIME?'*/
+                execute_atcmd("AT+CIPSENDEX=100");
+                /*TODO: Implement callback for AT command 'AT+CIPSENDEX and make data length parameter of CIPSENDEX a variable'*/
+                __delay_ms(100);
+                sprintf(buf, UNFORMATTED_PAYLOAD, date_in_string, final_wind_direction_angle, 5, bmp180_pressure, dht11_temperature, dht11_humidity, pcp10sec);                        
+                transmit_string_via_uart(buf);
+                __delay_ms(1000);
+                /*TODO: CIPCLOSE AT command must be called as consequence of successful sending of data via TCP/IP. Thus implement function in callback to CIPSENDEX*/
+                execute_atcmd("AT+CIPCLOSE");
+                server_conn_status = DISCONNECTED;
+                
+                dht11_slice_humidity = 0; dht11_slice_temp = 0; 
+                bmp180_slice_pressure = 0; bmp180_slice_temp = 0;
+                bmp180_temperature = 0; bmp180_pressure = 0; dht11_humidity = 0;
+                dht11_temperature = 0;
+                wind_dir_in_rad = 0; wind_dir_x_comp = 0; wind_dir_y_comp = 0; final_wind_direction_angle = 0;
+                pcp10sec = 0; revper10sec = 0;
+                sample_counter = 0;
+                memset(buf, 0, strlen(buf));
+            }
+        }
     }
 }
 
@@ -288,54 +374,58 @@ static void clear_buffer(uint8_t filler, size_t size,...){
 
 }
 
-static uint8_t dht11_process_curent_sensor_readings(float* dht11_temperature, 
-        float* dht11_humidity){
+static uint8_t dht11_process_curent_sensor_readings(uint8_t* dht11_temperature, 
+        uint8_t* dht11_humidity){
     
     uint8_t data_in_bytes[5], b, i, tmp, s, rslt = 0;
     uint16_t hum_tmp = 0, temp_tmp = 0, measurement;
     volatile const uint16_t* dht_measurements;
-    
-    tmp = 0;
     s = sizeof(data_in_bytes);
-    memset(data_in_bytes, 0, sizeof(data_in_bytes));
-    TMR3_clear_array_pw_measurements();
+    uint8_t no_error_detected = 0, retries = 1;
+    
+    while(!no_error_detected && retries > 0){
+        tmp = 0;
+        memset(data_in_bytes, 0, sizeof(data_in_bytes));
+        TMR3_clear_array_pw_measurements();
 
-    TMR3_Reload();
-    // Start sequence of signals to instruct DHT11 sensor to send readings of temperature and humidity
-    RC0_SetDigitalOutput();
-    PORTBbits.RB5 = 0;
-    __delay_ms(20);
-    RC0_SetDigitalInput();
-    __delay_us(40);
-    TMR3_StartTimer();
-    TMR3_StartSinglePulseAcquisition();
-    /* Wait maximum time possible for measuring temperature and humidity with dht11. 
-     * Full data is 40 bits, 24 bits possibly HIGH and 8 (fractional  part of humidity) 
-     * always low. 24 * 62.5nsec * 1140 + 8 * 62.nsec * 400. 400 and 1140 is the maximum 
-     * count gained using TMR1 in GATE SINGLE PULSE MODE with clock source 16Mhz and no 
-     * prescaler. This mode is used to bypass software overhead when measuring pulsewidths. 
-     */
-    __delay_ms(3);
-    TMR3_StopTimer();
-    dht_measurements = TMR3_retrieve_pw_measurements();
-    for(b = 0; b < s; b++){
-        for(i = 0; i < 8; i++){
-            measurement = dht_measurements[tmp++];
-            if(((measurement*62.5)/1000) > 50)
-                data_in_bytes[b] |= (1 << (7-i));
+        TMR3_Reload();
+        // Start sequence of signals to instruct DHT11 sensor to send readings of temperature and humidity
+        RC0_SetDigitalOutput();
+        PORTBbits.RB5 = 0;
+        __delay_ms(20);
+        RC0_SetDigitalInput();
+        __delay_us(40);
+        TMR3_StartTimer();
+        TMR3_StartSinglePulseAcquisition();
+        /* Wait maximum time possible for measuring temperature and humidity with dht11. 
+         * Full data is 40 bits, 24 bits possibly HIGH and 8 (fractional  part of humidity) 
+         * always low. 24 * 62.5nsec * 1140 + 8 * 62.nsec * 400. 400 and 1140 is the maximum 
+         * count gained using TMR1 in GATE SINGLE PULSE MODE with clock source 16Mhz and no 
+         * prescaler. This mode is used to bypass software overhead when measuring pulsewidths. 
+         */
+        __delay_ms(3);
+        TMR3_StopTimer();
+        dht_measurements = TMR3_retrieve_pw_measurements();
+        for(b = 0; b < s; b++){
+            for(i = 0; i < 8; i++){
+                measurement = dht_measurements[tmp++];
+                if(((measurement*62.5)/1000) > 50)
+                    data_in_bytes[b] |= (1 << (7-i));
+            }
         }
-    }
-    if(data_in_bytes[0]+data_in_bytes[1]+data_in_bytes[2]+data_in_bytes[3] == data_in_bytes[4]){ 
-        //DHT-11 40-bit data is presented in Qm.n fixed point format.
-        hum_tmp = (hum_tmp | (data_in_bytes[0]) << 8) | data_in_bytes[1];
-        temp_tmp = (temp_tmp | (data_in_bytes[2] << 8)) | data_in_bytes[3];
-        *dht11_humidity = (float) hum_tmp/256;
-        *dht11_temperature = (float) temp_tmp/256;
-        rslt = 1;
-    }else{
-    //Data integrity check failed.
-    // TODO: Implement function that logs status code in EEPROM and puts system to sleep
-        
+        if(data_in_bytes[0]+data_in_bytes[1]+data_in_bytes[2]+data_in_bytes[3] == data_in_bytes[4]){ 
+            //DHT-11 40-bit data is presented in Qm.n fixed point format.
+            hum_tmp = (hum_tmp | (data_in_bytes[0]) << 8) | data_in_bytes[1];
+            temp_tmp = (temp_tmp | (data_in_bytes[2] << 8)) | data_in_bytes[3];
+            *dht11_humidity = hum_tmp/256;
+            *dht11_temperature = temp_tmp/256;
+            rslt = 1;
+        }else{
+        //Data integrity check failed.
+        // TODO: Implement function that logs status code in EEPROM and puts system to sleep
+        __delay_ms(2000);
+        retries--;
+        }
     }
     return rslt;
 }
@@ -365,7 +455,8 @@ static void acquire_info_for_server_connection_via_tcp_server(cni *wlan_ssid, cn
             }
         }while((!is_valid_ap_info || !is_valid_server_info) && count_tmr0_rollovers <= max_rollovers);
         execute_atcmd("AT+CIPSERVER=0");
-        save_atcmd_timeout("+CWJAP_CUR", AT_CMD_TYPE_SET, 20000);
+        
+        save_atcmd_timeout("+CWJAP_CUR", AT_CMD_TYPE_SET, 20000);        
         connect_to_WLAN(wlan_ssid->value, wlan_passw->value);   
         save_atcmd_timeout("+CWJAP_CUR", AT_CMD_TYPE_SET, 5000);
         if(wlan_conn_status == CONNECTED){
@@ -485,7 +576,34 @@ static void acquire_neccessary_info_for_server_connection_via_smartconfig(void){
 }
 
 static void increment_tmr0_rollover_count(){
-    count_tmr0_rollovers--;
+    count_tmr0_rollovers++; 
+}
+
+static uint16_t get_wind_direction_angle(){
+    uint8_t tmp, i;
+    uint8_t count_set_bits = 0;
+    uint16_t angle = 0; 
+    tmp = ~((PORTA & 0x3F) | ((PORTE & 0x03) << 6));
+    for(i = 0; i <= 7; i++){
+        if(tmp & 1<<i){
+            count_set_bits++;
+            angle = angle + ((7-i)*45);            
+            if(count_set_bits > 1){
+                angle = angle / 2;
+            }
+        }
+    }
+    return angle;
+    
+}
+
+void increase_rev_in_10sec(void){
+    revper10sec++;
+}
+
+void increase_pcp_in10sec(void){
+    pcp10sec++;
+    EXT_INT2_InterruptFlagClear();
 }
 /*End of File
 */

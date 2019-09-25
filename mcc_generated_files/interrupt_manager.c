@@ -51,6 +51,8 @@
 #include "tmr3.h"
 #include "tmr0.h"
 #include "eusart1.h"
+#include "ext_int.h"
+#include "pin_manager.h"
 
 void  INTERRUPT_Initialize (void)
 {
@@ -59,9 +61,6 @@ void  INTERRUPT_Initialize (void)
 
     // Assign peripheral interrupt priority vectors
 
-    // TMRGI - high priority
-    IPR3bits.TMR3GIP = 1;
-
     // RCI - high priority
     IPR1bits.RC1IP = 1;
 
@@ -69,8 +68,14 @@ void  INTERRUPT_Initialize (void)
     IPR1bits.TX1IP = 1;
 
 
+    // INT2I - low priority
+    INTCON3bits.INT2IP = 0;    
+
     // TMRI - low priority
     INTCON2bits.TMR0IP = 0;    
+
+    // TMRGI - low priority
+    IPR3bits.TMR3GIP = 0;    
 
 }
 
@@ -94,7 +99,11 @@ void __interrupt() INTERRUPT_InterruptManagerHigh (void)
 void __interrupt(low_priority) INTERRUPT_InterruptManagerLow (void)
 {
     // interrupt handler
-    if(INTCONbits.TMR0IE == 1 && INTCONbits.TMR0IF == 1)
+    if(INTCON3bits.INT2IE == 1 && INTCON3bits.INT2IF == 1)
+    {
+        INT2_ISR();
+    }
+    else if(INTCONbits.TMR0IE == 1 && INTCONbits.TMR0IF == 1)
     {
         TMR0_ISR();
     }
@@ -102,10 +111,6 @@ void __interrupt(low_priority) INTERRUPT_InterruptManagerLow (void)
         {
         TMR3_GATE_ISR();
     } 
-    else if(PIE3bits.BCL2IE == 1 && PIR3bits.BCL2IF == 1)
-    {
-        I2C_bus_collision_ISR();
-    }
     else
     {
         //Unhandled Interrupt

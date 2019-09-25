@@ -52,3 +52,7 @@ build/
 bmp180\.p1
 
 bmp180\.pre
+
+disassembly/
+
+UoC_WeatherStation.zip

@@ -55,6 +55,7 @@ void SYSTEM_Initialize(void)
     OSCILLATOR_Initialize();
     I2C2_Initialize();
     TMR3_Initialize();
+    EXT_INT_Initialize();
     TMR0_Initialize();
     EUSART1_Initialize();
 }
